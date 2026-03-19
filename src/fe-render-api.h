@@ -14,7 +14,17 @@ typedef struct {
 	char *backend_path;
 } FeInitDesc;
 
+/**
+ * @brief creates context
+ * @return context
+ * @see fe_shutdown
+ */
 FeContext *fe_init(const FeInitDesc *);
+
+/**
+ * @brief destroys context
+ * @see fe_init
+ */
 void       fe_shutdown(FeContext *);
 
 typedef struct {
@@ -68,11 +78,20 @@ typedef struct {
 } FeCmdBuffer;
 
 /* window tier */
+/**
+ * @brief is window closed
+ * @return 1 if window was closed and 0 if it wasn't
+ */
 int fe_window_isclosed(FeContext *);
 
 /* API begin */
 FeCmdBuffer *fe_cmd_begin(FeContext *);
 void         fe_cmd_end(FeCmdBuffer *);
+
+/**
+ * @brief sumbits @ref FeCmdBuffer to GPU
+ * submits command buffer to GPU & destroys @ref FeCmdBuffer
+ */
 void         fe_submit(FeContext *, FeCmdBuffer *);
 
 /* DSL */
