@@ -6,9 +6,12 @@
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h>
 #define FER_LOAD(x) { \
-  char sym[100] = #x; \
+  ulong symlen = strlen(#x)+strlen(postfix)+1; \
+  char *sym = malloc(symlen); bzero(sym, symlen); \
+  strcat(sym , #x); \
   strcat(sym, postfix); \
   x = dlsym(feb.handle, sym); \
+  free(sym); \
   const char *dlsym_error = dlerror(); \
   if (dlsym_error) { \
     printf("can't load symbol: %s\n", dlsym_error); \
@@ -30,9 +33,11 @@
 #include <windows.h>
 #define FER_LIBEXT ".dll"
 #define FER_LOAD(x) { \
-  char sym[100] = #x; \
+  char *sym = malloc(strlen(#x)+strlen(postfix)+1); sym[strlen(sym)-1]=0; \
+  strcat(sym , #x); \
   strcat(sym, postfix); \
-  x = (typeof(x))GetProcAddress(feb.handle, sym) \
+  x = (typeof(x))GetProcAddress(feb.handle, sym); \
+  free(sym); \
   if (!x) { \
     DWORD error = GetLastError(); \
     printf("can't load symbol: %lu\n", error); \
@@ -46,8 +51,9 @@ FeBackend fe_load_backend(char *path, int *status)
 {
   FeBackend feb;
   char *postfix = strchr(path, '_');
+  ulong path_extlen = strlen(path)+strlen(FER_LIBEXT)+1;
 
-  char path_ext[99];
+  char *path_ext = malloc(path_extlen); bzero(path_ext, path_extlen);
   strcat(path_ext, path);
   strcat(path_ext, FER_LIBEXT);
 
@@ -57,6 +63,7 @@ FeBackend fe_load_backend(char *path, int *status)
 #ifdef _WIN32
   feb.handle = LoadLibrary(path_ext);
 #endif
+  free(path_ext);
   if (!feb.handle) {
     printf("failed to load backend %s\n", path_ext);
     *status = -1;
