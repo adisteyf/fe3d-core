@@ -11,22 +11,20 @@ typedef struct {
   void **fn;
 } fedl_sym;
 
-#define FEDL_SYM(x) { #x, (void*)&x },
+#define FEDL_SYM(x) { #x, (void**)&x },
 
 int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix)
 {
   for (ulong i=0;i<len;++i) {
     ulong symlen = strlen(syms[i].sym)+strlen(postfix)+1;
-    void *tmpfn;
     char *sym = malloc(symlen); bzero(sym, symlen);
     strcat(sym, syms[i].sym);
     strcat(sym, postfix);
-
 #if defined(__linux__) || defined(__APPLE__)
-    tmpfn = dlsym(feb->handle, sym);
+    *syms[i].fn = dlsym(feb->handle, sym);
 #endif
 #ifdef _WIN32
-  tmpfn = (typeof(syms[i].fn))GetProcAddress(feb.handle, sym);
+    *syms[i].fn = (typeof(syms[i].fn))GetProcAddress(feb.handle, sym);
 #endif
     free(sym);
 
@@ -40,14 +38,13 @@ int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix
 #endif
 
 #ifdef _WIN32
-    if (!syms[i].fn) {
+    if (!*syms[i].fn) {
       DWORD _error = GetLastError();
       printf("can't load symbol: %s\n", _error);
       FreeLibrary(feb->handle);
       return -1;
     }
 #endif
-    memcpy(&syms[i].fn, &tmpfn, sizeof(tmpfn));
   }
 
   return 0;
