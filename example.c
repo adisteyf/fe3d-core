@@ -1,7 +1,5 @@
-#include "fe-render-api.h"
+#include "src/fe-render-api.h"
 
-#define fe_pass(cmd, desc) \
-	for (int _fe_pass__i = (fe_begin_pass(cmd, desc), 0); !_fe_pass__i; fe_end_pass(cmd), _fe_pass__i++)
 int main()
 {
 	FeContext *ctx = fe_init(&(FeInitDesc) {

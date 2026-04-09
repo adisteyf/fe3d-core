@@ -1,0 +1,97 @@
+\doxysection{fe-\/render-\/api.h}
+\hypertarget{fe-render-api_8h_source}{}\label{fe-render-api_8h_source}\index{src/fe-\/render-\/api.h@{src/fe-\/render-\/api.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ \_\_FE\_RENDER\_API}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ \_\_FE\_RENDER\_API}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <stdint.h>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <stddef.h>}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }FeContext\ FeContext;}
+\DoxyCodeLine{00008\ \textcolor{keyword}{typedef}\ uint32\_t\ FeBuffer;}
+\DoxyCodeLine{00009\ \textcolor{keyword}{typedef}\ uint32\_t\ FePipeline;}
+\DoxyCodeLine{00010\ \textcolor{keyword}{typedef}\ uint32\_t\ FeShader;}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00013\ \ \ \ \ \textcolor{keywordtype}{void}\ *window;}
+\DoxyCodeLine{00014\ \ \ \ \ \textcolor{keywordtype}{char}\ *backend\_path;}
+\DoxyCodeLine{00015\ \}\ \doxymbox{\hyperlink{structFeInitDesc}{FeInitDesc}};}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00022\ FeContext\ *fe\_init(\textcolor{keyword}{const}\ \doxymbox{\hyperlink{structFeInitDesc}{FeInitDesc}}\ *);}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00028\ \textcolor{keywordtype}{void}\ \ \ \ \ \ \ fe\_shutdown(FeContext\ *);}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ size;}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{void}\ *data;}
+\DoxyCodeLine{00033\ \ \ \ \ uint32\_t\ usage;}
+\DoxyCodeLine{00034\ \}\ \doxymbox{\hyperlink{structFeBufferDesc}{FeBufferDesc}};}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ \textcolor{comment}{/*\ create\ tier\ */}}
+\DoxyCodeLine{00037\ FeBuffer\ fe\_create\_buffer(FeContext\ *,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{structFeBufferDesc}{FeBufferDesc}}\ *);}
+\DoxyCodeLine{00038\ }
+\DoxyCodeLine{00039\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00040\ \ \ \ \ \textcolor{keywordtype}{int}\ stage;}
+\DoxyCodeLine{00041\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *code;}
+\DoxyCodeLine{00042\ \}\ \doxymbox{\hyperlink{structFeShaderDesc}{FeShaderDesc}};}
+\DoxyCodeLine{00043\ }
+\DoxyCodeLine{00044\ FeShader\ fe\_create\_shader(FeContext\ *,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{structFeShaderDesc}{FeShaderDesc}}\ *);}
+\DoxyCodeLine{00045\ }
+\DoxyCodeLine{00046\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00047\ \ \ \ \ FeShader\ vs,fs;}
+\DoxyCodeLine{00048\ \}\ \doxymbox{\hyperlink{structFePipelineDesc}{FePipelineDesc}};}
+\DoxyCodeLine{00049\ }
+\DoxyCodeLine{00050\ FePipeline\ fe\_create\_pipeline(FeContext\ *,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{structFePipelineDesc}{FePipelineDesc}}\ *);}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00053\ \ \ \ \ FE\_CMD\_BEGIN\_PASS,}
+\DoxyCodeLine{00054\ \ \ \ \ FE\_CMD\_END\_PASS,}
+\DoxyCodeLine{00055\ \ \ \ \ FE\_CMD\_BIND\_PIPELINE,}
+\DoxyCodeLine{00056\ \ \ \ \ FE\_CMD\_BIND\_VERTEX\_BUFFER,}
+\DoxyCodeLine{00057\ \ \ \ \ FE\_CMD\_DRAW,}
+\DoxyCodeLine{00058\ \}\ FeCmdType;}
+\DoxyCodeLine{00059\ }
+\DoxyCodeLine{00060\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00061\ \ \ \ \ \textcolor{keywordtype}{float}\ clear\_color[4];}
+\DoxyCodeLine{00062\ \}\ \doxymbox{\hyperlink{structFePassDesc}{FePassDesc}};}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00065\ \ \ \ \ FeCmdType\ type;}
+\DoxyCodeLine{00066\ \ \ \ \ \textcolor{keyword}{union\ }\{}
+\DoxyCodeLine{00067\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{structFePassDesc}{FePassDesc}}\ pass;}
+\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ FePipeline\ pipeline;}
+\DoxyCodeLine{00069\ \ \ \ \ \ \ \ \ FeBuffer\ \ \ buffer;}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \textcolor{keyword}{struct\ }\{\ uint32\_t\ vertex\_count;\ \}\ draw;}
+\DoxyCodeLine{00071\ \ \ \ \ \};}
+\DoxyCodeLine{00072\ \}\ \doxymbox{\hyperlink{structFeCmd}{FeCmd}};}
+\DoxyCodeLine{00073\ }
+\DoxyCodeLine{00074\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00075\ \ \ \ \ \doxymbox{\hyperlink{structFeCmd}{FeCmd}}\ *data;}
+\DoxyCodeLine{00076\ \ \ \ \ uint32\_t\ count;}
+\DoxyCodeLine{00077\ \ \ \ \ uint32\_t\ capacity;}
+\DoxyCodeLine{00078\ \}\ \doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}};}
+\DoxyCodeLine{00079\ }
+\DoxyCodeLine{00080\ \textcolor{comment}{/*\ window\ tier\ */}}
+\DoxyCodeLine{00085\ \textcolor{keywordtype}{int}\ fe\_window\_isclosed(FeContext\ *);}
+\DoxyCodeLine{00086\ }
+\DoxyCodeLine{00087\ \textcolor{comment}{/*\ API\ begin\ */}}
+\DoxyCodeLine{00088\ \doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}}\ *fe\_cmd\_begin(FeContext\ *);}
+\DoxyCodeLine{00089\ \textcolor{keywordtype}{void}\ \ \ \ \ \ \ \ \ fe\_cmd\_end(\doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}}\ *);}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00095\ \textcolor{keywordtype}{void}\ \ \ \ \ \ \ \ \ fe\_submit(FeContext\ *,\ \doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}}\ *);}
+\DoxyCodeLine{00096\ }
+\DoxyCodeLine{00097\ \textcolor{comment}{/*\ DSL\ */}}
+\DoxyCodeLine{00098\ \textcolor{keywordtype}{void}\ fe\_begin\_pass(\doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}}\ *,\ \textcolor{keyword}{const}\ \doxymbox{\hyperlink{structFePassDesc}{FePassDesc}}\ *);}
+\DoxyCodeLine{00099\ \textcolor{keywordtype}{void}\ fe\_end\_pass(\doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}}\ *);}
+\DoxyCodeLine{00100\ \textcolor{keywordtype}{void}\ fe\_bind\_pipeline(\doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}}\ *,\ FePipeline);}
+\DoxyCodeLine{00101\ \textcolor{keywordtype}{void}\ fe\_bind\_vertex\_buffer(\doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}}\ *,\ FeBuffer);}
+\DoxyCodeLine{00102\ \textcolor{keywordtype}{void}\ fe\_draw(\doxymbox{\hyperlink{structFeCmdBuffer}{FeCmdBuffer}}\ *,\ uint32\_t\ vertex\_count);}
+\DoxyCodeLine{00103\ }
+\DoxyCodeLine{00104\ \textcolor{preprocessor}{\#define\ fe\_pass(cmd,\ desc)\ \(\backslash\)}}
+\DoxyCodeLine{00105\ \textcolor{preprocessor}{\ \ \ \ for\ (int\ \_fe\_pass\_\_i\ =\ (fe\_begin\_pass(cmd,\ desc),\ 0);\ !\_fe\_pass\_\_i;\ fe\_end\_pass(cmd),\ \_fe\_pass\_\_i++)}}
+\DoxyCodeLine{00106\ }
+\DoxyCodeLine{00107\ }
+\DoxyCodeLine{00108\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ \_\_FE\_RENDER\_API}}
+
+\end{DoxyCode}

@@ -9,23 +9,42 @@ typedef uint32_t FeBuffer;
 typedef uint32_t FePipeline;
 typedef uint32_t FeShader;
 
+#define FER_API_MAJOR 0
+#define FER_API_MINOR 1
+#define FER_API_PATCH 0
+
 typedef struct {
 	void *window;
 	char *backend_path;
 } FeInitDesc;
+
+typedef struct {
+  char desc[100];
+  char api_name[15];
+  int major,minor,patch;
+} FeRenderAPI;
+
+typedef struct {
+  char *absolute_path;
+  void *handle;
+} FeBackend;
+
+FeRenderAPI (*fe_renderapi_version)(void);
+FeBackend fe_load_backend(char *path, int *status); /* w/o extension */
+void      fe_free_backend(FeBackend *);
 
 /**
  * @brief creates context
  * @return context
  * @see fe_shutdown
  */
-FeContext *fe_init(const FeInitDesc *);
+FeContext *(*fe_init)(const FeInitDesc *);
 
 /**
  * @brief destroys context
  * @see fe_init
  */
-void       fe_shutdown(FeContext *);
+void       (*fe_shutdown)(FeContext *);
 
 typedef struct {
 	size_t size;
@@ -34,20 +53,20 @@ typedef struct {
 } FeBufferDesc;
 
 /* create tier */
-FeBuffer fe_create_buffer(FeContext *, const FeBufferDesc *);
+FeBuffer (*fe_create_buffer)(FeContext *, const FeBufferDesc *);
 
 typedef struct {
 	int stage;
 	const char *code;
 } FeShaderDesc;
 
-FeShader fe_create_shader(FeContext *, const FeShaderDesc *);
+FeShader (*fe_create_shader)(FeContext *, const FeShaderDesc *);
 
 typedef struct {
 	FeShader vs,fs;
 } FePipelineDesc;
 
-FePipeline fe_create_pipeline(FeContext *, const FePipelineDesc *);
+FePipeline (*fe_create_pipeline)(FeContext *, const FePipelineDesc *);
 
 typedef enum {
 	FE_CMD_BEGIN_PASS,
@@ -82,24 +101,24 @@ typedef struct {
  * @brief is window closed
  * @return 1 if window was closed and 0 if it wasn't
  */
-int fe_window_isclosed(FeContext *);
+int (*fe_window_isclosed)(FeContext *);
 
 /* API begin */
-FeCmdBuffer *fe_cmd_begin(FeContext *);
-void         fe_cmd_end(FeCmdBuffer *);
+FeCmdBuffer *(*fe_cmd_begin)(FeContext *);
+void         (*fe_cmd_end)(FeCmdBuffer *);
 
 /**
  * @brief sumbits @ref FeCmdBuffer to GPU
  * submits command buffer to GPU & destroys @ref FeCmdBuffer
  */
-void         fe_submit(FeContext *, FeCmdBuffer *);
+void         (*fe_submit)(FeContext *, FeCmdBuffer *);
 
 /* DSL */
-void fe_begin_pass(FeCmdBuffer *, const FePassDesc *);
-void fe_end_pass(FeCmdBuffer *);
-void fe_bind_pipeline(FeCmdBuffer *, FePipeline);
-void fe_bind_vertex_buffer(FeCmdBuffer *, FeBuffer);
-void fe_draw(FeCmdBuffer *, uint32_t vertex_count);
+void (*fe_begin_pass)(FeCmdBuffer *, const FePassDesc *);
+void (*fe_end_pass)(FeCmdBuffer *);
+void (*fe_bind_pipeline)(FeCmdBuffer *, FePipeline);
+void (*fe_bind_vertex_buffer)(FeCmdBuffer *, FeBuffer);
+void (*fe_draw)(FeCmdBuffer *, uint32_t vertex_count);
 
 #define fe_pass(cmd, desc) \
 	for (int _fe_pass__i = (fe_begin_pass(cmd, desc), 0); !_fe_pass__i; fe_end_pass(cmd), _fe_pass__i++)
