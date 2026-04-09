@@ -2,9 +2,58 @@
 #include <stdlib.h>
 #include <string.h>
 #include "fe-render-api.h"
+#if defined(__linux__) || defined (__APPLE__)
+#include <dlfcn.h>
+#endif
+
+typedef struct {
+  char *sym;
+  void **fn;
+} fedl_sym;
+
+#define FEDL_SYM(x) { #x, (void*)&x },
+
+int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix)
+{
+  for (ulong i=0;i<len;++i) {
+    ulong symlen = strlen(syms[i].sym)+strlen(postfix)+1;
+    void *tmpfn;
+    char *sym = malloc(symlen); bzero(sym, symlen);
+    strcat(sym, syms[i].sym);
+    strcat(sym, postfix);
 
 #if defined(__linux__) || defined(__APPLE__)
-#include <dlfcn.h>
+    tmpfn = dlsym(feb->handle, sym);
+#endif
+#ifdef _WIN32
+  tmpfn = (typeof(syms[i].fn))GetProcAddress(feb.handle, sym);
+#endif
+    free(sym);
+
+#if defined(__linux__) || defined(__APPLE__)
+    const char *dlsym_error = dlerror();
+    if (dlsym_error) {
+      printf("can't load symbol: %s\n", dlsym_error);
+      dlclose(feb->handle);
+      return -1;
+    }
+#endif
+
+#ifdef _WIN32
+    if (!syms[i].fn) {
+      DWORD _error = GetLastError();
+      printf("can't load symbol: %s\n", _error);
+      FreeLibrary(feb->handle);
+      return -1;
+    }
+#endif
+    memcpy(&syms[i].fn, &tmpfn, sizeof(tmpfn));
+  }
+
+  return 0;
+}
+
+#if defined(__linux__) || defined(__APPLE__)
 #define FER_LOAD(x) { \
   ulong symlen = strlen(#x)+strlen(postfix)+1; \
   char *sym = malloc(symlen); bzero(sym, symlen); \
@@ -39,9 +88,8 @@
   x = (typeof(x))GetProcAddress(feb.handle, sym); \
   free(sym); \
   if (!x) { \
-    DWORD error = GetLastError(); \
     printf("can't load symbol: %lu\n", error); \
-    FreeLibrary(hLib); \
+    FreeLibrary(feb->handle); \
     *status = -2; \
     return feb; \
 }}
@@ -73,8 +121,12 @@ FeBackend fe_load_backend(char *path, int *status)
 #if defined(__linux__) || defined(__APPLE__)
   dlerror();
 #endif // UNIX
-  FER_LOAD(fe_renderapi_version);
+  //FER_LOAD(fe_renderapi_version);
+  fedl_sym syms[] = {
+    FEDL_SYM(fe_renderapi_version)
+  };
 
+  fedl_loadsyms(&feb, syms, sizeof(syms)/sizeof(syms[0]), postfix);
   return feb;
 }
 
