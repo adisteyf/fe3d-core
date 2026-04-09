@@ -73,13 +73,13 @@ FeBackend fe_load_backend(char *path, int *status)
 
 void fe_free_backend(FeBackend *feb)
 {
-	if (feb->handle) {
+  if (feb->handle) {
 #if defined(__linux__) || defined(__APPLE__)
-		dlclose(feb->handle);
+    dlclose(feb->handle);
 #endif // __linux__ || __APPLE__
 #ifdef _WIN32
     FreeLibrary(feb->handle);
 #endif // _WIN32
     feb->handle = 0;
-	}
+  }
 }
