@@ -50,23 +50,6 @@ int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix
   return 0;
 }
 
-#if defined(__linux__) || defined(__APPLE__)
-#define FER_LOAD(x) { \
-  ulong symlen = strlen(#x)+strlen(postfix)+1; \
-  char *sym = malloc(symlen); bzero(sym, symlen); \
-  strcat(sym , #x); \
-  strcat(sym, postfix); \
-  x = dlsym(feb.handle, sym); \
-  free(sym); \
-  const char *dlsym_error = dlerror(); \
-  if (dlsym_error) { \
-    printf("can't load symbol: %s\n", dlsym_error); \
-    dlclose(feb.handle); \
-    *status = -2; \
-    return feb; \
-  }}
-#endif // __linux__ || __APPLE__
-
 #ifdef __linux__
 #define FER_LIBEXT ".so"
 #endif // __linux__
@@ -78,18 +61,6 @@ int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix
 #ifdef _WIN32
 #include <windows.h>
 #define FER_LIBEXT ".dll"
-#define FER_LOAD(x) { \
-  char *sym = malloc(strlen(#x)+strlen(postfix)+1); sym[strlen(sym)-1]=0; \
-  strcat(sym , #x); \
-  strcat(sym, postfix); \
-  x = (typeof(x))GetProcAddress(feb.handle, sym); \
-  free(sym); \
-  if (!x) { \
-    printf("can't load symbol: %lu\n", error); \
-    FreeLibrary(feb->handle); \
-    *status = -2; \
-    return feb; \
-}}
 #endif // _WIN32
 
 FeBackend fe_load_backend(char *path, int *status)
