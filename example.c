@@ -1,9 +1,16 @@
-#include "src/fe-render-api.h"
+#include "src/fe-render-api.c"
+#include <stdio.h>
 
 int main()
 {
-	FeContext *ctx = fe_init(&(FeInitDesc) {
-			.backend_path = "path/to/backend w/o extension",
+  FeBackends febs = fedl_init();
+  if (fe_render_api("./libfer-backend_debugblank", &febs)) {
+    printf("failed to load fe_render backend\n");
+    return -1;
+  }
+
+	FeContext *ctx = fe_render_init(&(FeRInitDesc) {
+      .feb = febs.render,
 	});
 
 	float vertices[] = {
@@ -49,7 +56,8 @@ int main()
 		fe_submit(ctx, cmd);
 	}
 
-	fe_shutdown(ctx);
+	fe_render_shutdown(ctx);
+  fe_free_backends(&febs);
 	return 0;
 }
 

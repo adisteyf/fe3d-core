@@ -16,9 +16,8 @@ typedef uint32_t FeShader;
 #define FER_API_PATCH 0
 
 typedef struct {
-	void *window;
-	char *backend_path;
-} FeInitDesc;
+  FeBackend feb;
+} FeRInitDesc;
 
 typedef struct {
   char desc[100];
@@ -46,13 +45,13 @@ int fe_render_api(char *path, FeBackends *febs)
  * @return context
  * @see fe_shutdown
  */
-FeContext *(*fe_init)(const FeInitDesc *);
+FeContext *(*fe_render_init)(const FeRInitDesc *);
 
 /**
  * @brief destroys context
  * @see fe_init
  */
-void       (*fe_shutdown)(FeContext *);
+void       (*fe_render_shutdown)(FeContext *);
 
 typedef struct {
 	size_t size;
