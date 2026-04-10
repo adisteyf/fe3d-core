@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
+#include "dl-loader.h"
 
 typedef struct FeContext FeContext;
 typedef uint32_t FeBuffer;
@@ -24,14 +26,20 @@ typedef struct {
   int major,minor,patch;
 } FeRenderAPI;
 
-typedef struct {
-  char *absolute_path;
-  void *handle;
-} FeBackend;
-
 FeRenderAPI (*fe_renderapi_version)(void);
-FeBackend fe_load_backend(char *path, int *status); /* w/o extension */
-void      fe_free_backend(FeBackend *);
+int fe_render_api(char *path, FeBackends *febs)
+{
+  int status;
+  char *postfix = strchr(path, '_');
+  febs->render = fe_load_backend(path, &status);
+
+  fedl_sym syms[] = {
+    FEDL_SYM(fe_renderapi_version)
+  };
+
+  fedl_loadsyms(&febs->render, syms, sizeof(syms)/sizeof(syms[0]), postfix);
+  return status;
+}
 
 /**
  * @brief creates context

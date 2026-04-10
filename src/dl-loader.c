@@ -1,17 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "fe-render-api.h"
+#include "dl-loader.h"
 #if defined(__linux__) || defined (__APPLE__)
 #include <dlfcn.h>
 #endif
-
-typedef struct {
-  char *sym;
-  void **fn;
-} fedl_sym;
-
-#define FEDL_SYM(x) { #x, (void**)&x },
 
 int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix)
 {
@@ -66,7 +59,6 @@ int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix
 FeBackend fe_load_backend(char *path, int *status)
 {
   FeBackend feb;
-  char *postfix = strchr(path, '_');
   ulong path_extlen = strlen(path)+strlen(FER_LIBEXT)+1;
 
   char *path_ext = malloc(path_extlen); bzero(path_ext, path_extlen);
@@ -90,11 +82,6 @@ FeBackend fe_load_backend(char *path, int *status)
   dlerror();
 #endif // UNIX
   //FER_LOAD(fe_renderapi_version);
-  fedl_sym syms[] = {
-    FEDL_SYM(fe_renderapi_version)
-  };
-
-  fedl_loadsyms(&feb, syms, sizeof(syms)/sizeof(syms[0]), postfix);
   return feb;
 }
 
@@ -110,3 +97,22 @@ void fe_free_backend(FeBackend *feb)
     feb->handle = 0;
   }
 }
+
+void fe_free_backends(FeBackends *febs)
+{
+  fe_free_backend(&febs->render);
+  fe_free_backend(&febs->physics);
+  fe_free_backend(&febs->window);
+  fe_free_backend(&febs->sound);
+}
+
+FeBackends fedl_init()
+{
+  FeBackends febs;
+  febs.render.handle = 0;
+  febs.physics.handle = 0;
+  febs.sound.handle = 0;
+  febs.window.handle = 0;
+  return febs;
+}
+

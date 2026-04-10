@@ -1,4 +1,4 @@
-#include "../src/fe-render-api.h"
+#include "../src/fe-render-api.c"
 #include <string.h>
 
 FeRenderAPI fe_renderapi_version_debugblank(void)
