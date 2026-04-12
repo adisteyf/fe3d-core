@@ -6,7 +6,9 @@
 #include <string.h>
 #include "../../dl-loader/dl-loader.h"
 
-typedef struct FeContext FeContext;
+typedef struct FeContext {
+	void *logfd;
+} FeContext;
 typedef uint32_t FeBuffer;
 typedef uint32_t FePipeline;
 typedef uint32_t FeShader;
@@ -17,6 +19,7 @@ typedef uint32_t FeShader;
 
 typedef struct {
   FeBackend feb;
+	void *out_fd;
 } FeRInitDesc;
 
 typedef struct {
@@ -26,19 +29,6 @@ typedef struct {
 } FeRenderAPI;
 
 FeRenderAPI (*fe_renderapi_version)(void);
-int fe_render_api(char *path, FeBackends *febs)
-{
-  int status;
-  char *postfix = strchr(path, '_');
-  febs->render = fe_load_backend(path, &status);
-
-  fedl_sym syms[] = {
-    FEDL_SYM(fe_renderapi_version)
-  };
-
-  fedl_loadsyms(&febs->render, syms, sizeof(syms)/sizeof(syms[0]), postfix);
-  return status;
-}
 
 /**
  * @brief creates context
@@ -130,5 +120,33 @@ void (*fe_draw)(FeCmdBuffer *, uint32_t vertex_count);
 #define fe_pass(cmd, desc) \
 	for (int _fe_pass__i = (fe_begin_pass(cmd, desc), 0); !_fe_pass__i; fe_end_pass(cmd), _fe_pass__i++)
 
+int fe_render_api(char *path, FeBackends *febs, void *outfd)
+{
+	int status=0;
+	char *postfix = strchr(path, '_');
+	febs->render = fe_load_backend(path, &status, outfd);
+	if (status) return status;
+	__FEDL_LOG(outfd, "[INFO] loading fe_render_api symbols\n")
+
+	fedl_sym syms[] = {
+		FEDL_SYM(fe_renderapi_version)
+		FEDL_SYM(fe_render_init)
+		FEDL_SYM(fe_render_shutdown)
+		FEDL_SYM(fe_create_buffer)
+		/*FEDL_SYM(fe_create_shader)
+		FEDL_SYM(fe_create_pipeline)
+		FEDL_SYM(fe_bind_pipeline)*/
+		FEDL_SYM(fe_bind_vertex_buffer)
+		/*FEDL_SYM(fe_draw)
+		FEDL_SYM(fe_cmd_begin)
+		FEDL_SYM(fe_cmd_end)
+		FEDL_SYM(fe_submit)
+		FEDL_SYM(fe_free_backend)
+		FEDL_SYM(fe_free_backends)*/
+	};
+
+	status = fedl_loadsyms(&febs->render, syms, sizeof(syms)/sizeof(syms[0]), postfix, outfd);
+	return status;
+}
 
 #endif // __FE_RENDER_API

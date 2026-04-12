@@ -6,8 +6,10 @@
 #include <dlfcn.h>
 #endif
 
-int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix)
+int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix, void *out)
 {
+  const char *load_error = "[WARN] failed to load symbol: %s\n";
+
   for (ulong i=0;i<len;++i) {
     ulong symlen = strlen(syms[i].sym)+strlen(postfix)+1;
     char *sym = malloc(symlen); bzero(sym, symlen);
@@ -24,18 +26,18 @@ int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix
 #if defined(__linux__) || defined(__APPLE__)
     const char *dlsym_error = dlerror();
     if (dlsym_error) {
-      printf("can't load symbol: %s\n", dlsym_error);
-      dlclose(feb->handle);
-      return -1;
+      __FEDL_LOG(out,load_error,dlsym_error);
+      //dlclose(feb->handle);
+      //return -1;
     }
 #endif
 
 #ifdef _WIN32
     if (!*syms[i].fn) {
       DWORD _error = GetLastError();
-      printf("can't load symbol: %s\n", _error);
-      FreeLibrary(feb->handle);
-      return -1;
+      __FEDL_LOG(out,load_error,_error);
+      //FreeLibrary(feb->handle);
+      //return -1;
     }
 #endif
   }
@@ -56,7 +58,7 @@ int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix
 #define FER_LIBEXT ".dll"
 #endif // _WIN32
 
-FeBackend fe_load_backend(char *path, int *status)
+FeBackend fe_load_backend(char *path, int *status, void *out)
 {
   FeBackend feb;
   ulong path_extlen = strlen(path)+strlen(FER_LIBEXT)+1;
@@ -71,13 +73,14 @@ FeBackend fe_load_backend(char *path, int *status)
 #ifdef _WIN32
   feb.handle = LoadLibrary(path_ext);
 #endif
-  free(path_ext);
   if (!feb.handle) {
-    printf("failed to load backend %s\n", path_ext);
+    const char *error = dlerror();
+    __FEDL_LOG(out, "failed to load backend %s\n", error);
     *status = -1;
     return feb;
   }
 
+  free(path_ext);
 #if defined(__linux__) || defined(__APPLE__)
   dlerror();
 #endif // UNIX
