@@ -1,3 +1,10 @@
 cmake_minimum_required(VERSION 4.3.1)
 project(fe3d)
-add_executable(fe3d )
+#add_executable(fe3d )
+
+add_library(dl-loader STATIC src/dl-loader.c)
+add_library(fer-backend_debugblank SHARED backends/fer-backend_debugblank.c)
+target_include_directories(dl-loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+add_executable(test01 tests/test01.c)
+target_link_libraries(test01 dl-loader)
+#target_link_libraries(test01 fer-backend_debugblank)
