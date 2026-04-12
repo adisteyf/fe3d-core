@@ -1,3 +1,4 @@
 docs
 build
 cmake-build-debug
+.idea
