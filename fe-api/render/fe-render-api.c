@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include "dl-loader.h"
+#include "../../dl-loader/dl-loader.h"
 
 typedef struct FeContext FeContext;
 typedef uint32_t FeBuffer;

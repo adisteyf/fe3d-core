@@ -1,4 +1,4 @@
-#include "../src/fe-render-api.c"
+#include "../fe-api/render/fe-render-api.h"
 #include <stdio.h>
 
 int main() {
