@@ -5,6 +5,13 @@ find_package(Doxygen REQUIRED)
 if (DOXYGEN_FOUND)
     set(DOXYGEN_IN "${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile")
     set(DOXYGEN_OUT "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.out")
+    set(DOXYGEN_INPUT_DIR
+            "${CMAKE_SOURCE_DIR}/dl-loader"
+            "${CMAKE_SOURCE_DIR}/fe-api"
+            "${CMAKE_SOURCE_DIR}/backends"
+    )
+    string(REPLACE ";" " " DOXYGEN_INPUT_DIR "${DOXYGEN_INPUT_DIR}")
+
     configure_file("${DOXYGEN_IN}" "${DOXYGEN_OUT}" @ONLY)
     add_custom_target(
             docs
