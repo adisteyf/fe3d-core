@@ -51,6 +51,7 @@ typedef struct {
 
 /* create tier */
 FeBuffer (*fe_create_buffer)(FeContext *, const FeBufferDesc *);
+void (*fe_free_buffer)(FeContext *, FeBuffer);
 
 typedef struct {
 	int stage;
@@ -133,6 +134,7 @@ int fe_render_api(char *path, FeBackends *febs, void *outfd)
 		FEDL_SYM(fe_render_init)
 		FEDL_SYM(fe_render_shutdown)
 		FEDL_SYM(fe_create_buffer)
+		FEDL_SYM(fe_free_buffer)
 		/*FEDL_SYM(fe_create_shader)
 		FEDL_SYM(fe_create_pipeline)
 		FEDL_SYM(fe_bind_pipeline)*/

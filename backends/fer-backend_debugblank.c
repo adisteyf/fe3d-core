@@ -30,7 +30,7 @@ typedef struct NullContext {
   /* API */
   ulong buffer_count,buffer_capacity,buffers_alive;
   struct {
-    ulong *list,size;
+    ulong *list,size,capacity;
   } buffers_free;
   NullBuffer *buffers;
 
@@ -43,8 +43,12 @@ FeContext *fe_render_init_debugblank(const FeRInitDesc *desc) {
   NullContext *ctx = malloc(sizeof(NullContext));
   ctx->logfd = desc->out_fd;
   ctx->frame = 0;
+  ctx->buffers = 0;
   ctx->buffer_count = 0;
   ctx->buffer_capacity = 0;
+  ctx->buffers_free.list = 0;
+  ctx->buffers_free.size = 0;
+  ctx->buffers_free.capacity = 0;
   ctx->buffers_alive = 0;
   ctx->framebuffer_count = 0;
   __FEDL_LOG(ctx->logfd, "[INFO] DebugBlank initialised\n")
@@ -67,6 +71,7 @@ void fe_render_shutdown_debugblank(FeContext *_ctx)
   }
 
   free(ctx->buffers);
+  free(ctx->buffers_free.list);
   __FEDL_LOG(ctx->logfd, "[INFO] DebugBlank shutdown\n")
   free(ctx);
 }
@@ -86,7 +91,12 @@ FeBuffer fe_create_buffer_debugblank(FeContext *_ctx, const FeBufferDesc *desc)
     ctx->buffers = realloc(ctx->buffers, ctx->buffer_capacity * sizeof(*ctx->buffers));
   }
 
-  FeBuffer id = ctx->buffer_count++;
+  FeBuffer id;
+  if (ctx->buffers_free.size > 0) {
+    id = ctx->buffers_free.list[--ctx->buffers_free.size];
+  } else {
+    id = ctx->buffer_count++;
+  }
   ctx->buffers[id].size = desc->size;
   ctx->buffers[id].data = malloc(desc->size);
 
@@ -96,7 +106,7 @@ FeBuffer fe_create_buffer_debugblank(FeContext *_ctx, const FeBufferDesc *desc)
 
   ctx->buffers[id].alive = 1;
   ctx->buffers_alive++;
-  __FEDL_LOG(ctx->logfd, "[INFO] create buffer id=%u size=%zu\n", id, desc->size)
+  __FEDL_LOG(ctx->logfd, "[INFO] create buffer id=%u size=%zu addr=%p\n", id, desc->size, ctx->buffers[id].data)
   return id;
 }
 
@@ -108,10 +118,10 @@ void fe_bind_vertex_buffer_debugblank(FeCmdBuffer *cmd, FeBuffer buf)
   }
 
   FeCmd c = {
-    .type = FE_CMD_VERTEX_BUFFER,
+    .type = FE_CMD_BIND_VERTEX_BUFFER,
+    .buffer = buf,
   };
-  c.buffer = buf;
-  push_cmd(cmd, c);
+  //push_cmd(cmd, c);
 }
 
 void fe_free_buffer_debugblank(FeContext *_ctx, FeBuffer buf)
@@ -125,16 +135,22 @@ void fe_free_buffer_debugblank(FeContext *_ctx, FeBuffer buf)
 
   NullBuffer *b = &ctx->buffers[buf];
   if (!b->alive) {
-    __FEDL_LOG(ctx->logfd, "[LEAK] double-free buffer id=%u\n", buf)
+    __FEDL_LOG(ctx->logfd, "[CORRUPT] double-free buffer id=%u\n", buf)
     return;
   }
 
+  /* allocator */
+  if (ctx->buffers_free.size >= ctx->buffers_free.capacity) {
+    ctx->buffers_free.capacity = (ctx->buffers_free.capacity) ? ctx->buffer_capacity * 2 : 4;
+    ctx->buffers_free.list = realloc(ctx->buffers_free.list, ctx->buffers_free.capacity * sizeof(*ctx->buffers_free.list));
+  }
+
+  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u addr=%p\n", buf, b->data)
   free(b->data);
   b->data = 0;
   b->size = 0;
   b->alive = 0;
   ctx->buffers_alive--;
   ctx->buffers_free.list[ctx->buffers_free.size++] = buf;
-
-  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u\n", buf)
 }
+
