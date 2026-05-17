@@ -37,7 +37,6 @@ typedef struct NullContext {
   ulong framebuffer_count;
   ulong frame;
 } NullContext;
-static NullContext *last_buf_context;
 
 FeContext *fe_render_init_debugblank(const FeRInitDesc *desc) {
   NullContext *ctx = malloc(sizeof(NullContext));
@@ -122,20 +121,18 @@ inline int fe_check_buffer_debugblank(FeContext *_ctx, FeBuffer h)
   if (fe_buffer_index(h) >= ctx->buffer_count) return 0;
   NullBuffer *b = &ctx->buffers[fe_buffer_index(h)];
 
-  if (b->alive && b->gen == fe_buffer_generation(h)) {
-    if (b->alive) return FE_STALE_BUFFER;
-    return FE_DEAD_BUFFER;
-  }
+  if (!b->alive) return FE_DEAD_BUFFER;
+  if (b->gen != fe_buffer_generation(h)) return FE_STALE_BUFFER;
 
   return FE_OK;
 }
 
 void fe_bind_vertex_buffer_debugblank(FeCmdBuffer *cmd, FeBuffer buf)
 {
-  NullContext *ctx = last_buf_context;
+  NullContext *ctx = (void*)cmd->ctx;
 
   if (fe_check_buffer_debugblank((void*)ctx, buf) != FE_OK) {
-    __FEDL_LOG(last_buf_context->logfd, "[ERROR] invalid buffer id=%u\n", fe_buffer_index(buf))
+    __FEDL_LOG(ctx->logfd, "[ERROR] invalid buffer id=%u\n", fe_buffer_index(buf))
     return;
   }
 
