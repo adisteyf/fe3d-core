@@ -1,5 +1,6 @@
 #ifndef __FE_RENDER_API
-#include "../fe-api/render/fe-render-api.c"
+//#include "../fe-api/render/fe-render-api.c"
+#include "../fe-api/render/rhi.c"
 #endif
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,8 +30,9 @@ int main() {
     .usage = 0,
   };
   FeBuffer buffer = fe_create_buffer(ctx, &buffer_desc);
-  free(buffer_desc.data);
+  free(_data);
   fe_free_buffer(ctx, buffer);
+  fe_submit(ctx);
 
   fe_render_shutdown(ctx);
   fe_free_backends(&febs);

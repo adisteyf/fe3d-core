@@ -4,7 +4,7 @@
 
 typedef struct {
   void *data;
-  ulong size,gen;
+  uint32_t size,gen;
   int alive;
 } NullBuffer;
 
@@ -56,8 +56,8 @@ FeContext *fe_render_init(const FeRInitDesc *desc) {
   ctx->buffers_free.capacity = 0;
   ctx->buffers_alive = 0;
   ctx->framebuffer_count = 0;
-  ctx->cmds->ctx = (void*)ctx;
   ctx->cmds = fe_cmd_begin((void *)ctx);
+  ctx->cmds->ctx = (void*)ctx;
   __FEDL_LOG(ctx->logfd, "[INFO] DebugBlank initialised\n")
   return (FeContext*)ctx;
 }
@@ -66,7 +66,7 @@ void fe_render_shutdown(FeContext *_ctx)
 {
   NullContext *ctx = (NullContext*)_ctx;
 
-  if (ctx->buffers_alive != 0) {
+  if (ctx->buffers_alive) {
     __FEDL_LOG(ctx->logfd, "[LEAK] %zu buffers not destroyed\n", ctx->buffer_count)
   }
 
@@ -134,14 +134,21 @@ FeBuffer fe_create_buffer(FeContext *_ctx, const FeBufferDesc *desc)
   return handle;
 }
 
-inline int fe_check_buffer(FeContext *_ctx, FeBuffer h)
+int fe_check_buffer(FeContext *_ctx, FeBuffer h)
 {
   NullContext *ctx = (void *)_ctx;
   if (fe_buffer_index(h) >= ctx->buffer_count) return 0;
   NullBuffer *b = &ctx->buffers[fe_buffer_index(h)];
 
-  if (!b->alive) return FE_DEAD_BUFFER;
-  if (b->gen != fe_buffer_generation(h)) return FE_STALE_BUFFER;
+  if (!b->alive) {
+    __FEDL_LOG(ctx->logfd, "[ERROR] dead buffer id=%u\n", fe_buffer_index(h))
+    return FE_DEAD_BUFFER;
+  }
+
+  if (b->gen != fe_buffer_generation(h)) {
+    __FEDL_LOG(ctx->logfd, "[ERROR] dead buffer id=%u gen=%u\n", fe_buffer_index(h), fe_buffer_generation(h))
+    return FE_STALE_BUFFER;
+  }
 
   return FE_OK;
 }
@@ -176,7 +183,7 @@ void fe_free_buffer(FeContext *_ctx, FeBuffer buf)
 
   /* allocator */
   if (ctx->buffers_free.size >= ctx->buffers_free.capacity) {
-    ctx->buffers_free.capacity = (ctx->buffers_free.capacity) ? ctx->buffer_capacity * 2 : 4;
+    ctx->buffers_free.capacity = (ctx->buffers_free.capacity) ? ctx->buffers_free.capacity * 2 : 4;
     ctx->buffers_free.list = realloc(ctx->buffers_free.list, ctx->buffers_free.capacity * sizeof(*ctx->buffers_free.list));
   }
 

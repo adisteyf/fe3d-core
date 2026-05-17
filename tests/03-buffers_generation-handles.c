@@ -1,5 +1,6 @@
 #ifndef __FE_RENDER_API
-#include "../fe-api/render/fe-render-api.c"
+//#include "../fe-api/render/fe-render-api.c"
+#include "../fe-api/render/rhi.c"
 #endif
 #include <stdio.h>
 #include <assert.h>
