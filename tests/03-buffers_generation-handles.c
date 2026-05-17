@@ -36,6 +36,7 @@ int main() {
   assert(fe_buffer_index(old_buf) == fe_buffer_index(new_buf));
   assert(fe_buffer_generation(old_buf) != fe_buffer_generation(new_buf));
 
+  fe_cmd_submit(ctx);
 
   fe_render_shutdown(ctx);
   fe_free_backends(&febs);

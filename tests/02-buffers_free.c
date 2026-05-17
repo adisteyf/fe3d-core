@@ -32,7 +32,7 @@ int main() {
   FeBuffer buffer = fe_create_buffer(ctx, &buffer_desc);
   free(_data);
   fe_free_buffer(ctx, buffer);
-  fe_submit(ctx);
+  fe_cmd_submit(ctx);
 
   fe_render_shutdown(ctx);
   fe_free_backends(&febs);

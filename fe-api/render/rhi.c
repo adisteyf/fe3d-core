@@ -43,6 +43,13 @@ fe_cmd_begin(FeContext *ctx)
   return cmd;
 }
 
+void
+fe_cmd_submit(FeContext *_ctx)
+{
+  NullContext *ctx = (void *)_ctx;
+  fe_submit(_ctx, ctx->cmds);
+}
+
 
 FeContext *fe_render_init(const FeRInitDesc *desc) {
   NullContext *ctx = malloc(sizeof(NullContext));

@@ -22,19 +22,19 @@ void fe_submit_debugblank(FeContext *ctx, FeCmdBuffer *cmd)
     switch (c->type) {
 case FE_CMD_CREATE_BUFFER:
 {
-  __FEDL_LOG(ctx->logfd, "create buffer handle=%zu size=%zu", c->create_buffer.h, c->create_buffer.desc.size)
+  __FEDL_LOG(ctx->logfd, "create buffer handle=%zu size=%zu\n", c->create_buffer.h, c->create_buffer.desc.size)
   break;
 }
 
 case FE_CMD_BIND_VERTEX_BUFFER:
 {
-  __FEDL_LOG(ctx->logfd, "bind buffer=%zu", c->bind_vertex_buffer.h)
+  __FEDL_LOG(ctx->logfd, "bind buffer handle=%zu\n", c->bind_vertex_buffer.h)
   break;
 }
 
 case FE_CMD_DESTROY_BUFFER:
 {
-  __FEDL_LOG(ctx->logfd, "destroy buffer=%zu", c->destroy_buffer.h)
+  __FEDL_LOG(ctx->logfd, "destroy buffer handle=%zu\n", c->destroy_buffer.h)
   break;
 }
     }
