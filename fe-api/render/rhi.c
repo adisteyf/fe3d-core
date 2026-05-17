@@ -3,9 +3,13 @@
 #include "../../dl-loader/dl-loader.h"
 
 typedef struct {
-  void *data;
+  //void *data;
   uint32_t size,gen;
   int alive;
+
+  struct {
+    void *data;
+  } native;
 } NullBuffer;
 
 typedef struct NullContext {
@@ -80,7 +84,8 @@ void fe_render_shutdown(FeContext *_ctx)
   for (ulong i=0; i<ctx->buffer_count; i++) {
     if (ctx->buffers[i].alive) {
       __FEDL_LOG(ctx->logfd, "[LEAK] buffer id=%zu is alive\n", i)
-      free(ctx->buffers[i].data);
+      //free(ctx->buffers[i].data);
+      //fe_free_buffer(ctx, ) TODO
     }
   }
 
@@ -117,18 +122,18 @@ FeBuffer fe_create_buffer(FeContext *_ctx, const FeBufferDesc *desc)
   NullBuffer *b = &ctx->buffers[id];
 
   b->size = desc->size;
-  b->data = malloc(desc->size);
+  //b->data = malloc(desc->size);
   b->gen++;
 
   FeBuffer handle = fe_buffer_make(id, b->gen);
 
-  if (desc->data) {
+  /*if (desc->data) {
     memcpy(b->data, desc->data, desc->size);
-  }
+  }*/
 
   b->alive = 1;
   ctx->buffers_alive++;
-  __FEDL_LOG(ctx->logfd, "[INFO] create buffer cmd id=%zu size=%zu addr=%p\n", id, desc->size, b->data)
+  __FEDL_LOG(ctx->logfd, "[INFO] create buffer cmd id=%zu size=%zu\n", id, desc->size)
 
   FeCmd c = {
     .type = FE_CMD_CREATE_BUFFER,
@@ -194,9 +199,9 @@ void fe_free_buffer(FeContext *_ctx, FeBuffer buf)
     ctx->buffers_free.list = realloc(ctx->buffers_free.list, ctx->buffers_free.capacity * sizeof(*ctx->buffers_free.list));
   }
 
-  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u addr=%p\n", fe_buffer_index(buf), b->data)
-  free(b->data);
-  b->data = 0;
+  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u\n", fe_buffer_index(buf))
+  //free(b->data);
+  //b->data = 0;
   b->size = 0;
   b->alive = 0;
   b->gen++;
