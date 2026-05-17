@@ -19,7 +19,7 @@ FeRenderAPI fe_renderapi_version_debugblank(void)
 
 typedef struct {
   void *data;
-  ulong size;
+  ulong size,gen;
   int alive;
 } NullBuffer;
 
@@ -60,12 +60,12 @@ void fe_render_shutdown_debugblank(FeContext *_ctx)
   NullContext *ctx = (NullContext*)_ctx;
 
   if (ctx->buffers_alive != 0) {
-    __FEDL_LOG(ctx->logfd, "[LEAK] %u buffers not destroyed", ctx->buffer_count)
+    __FEDL_LOG(ctx->logfd, "[LEAK] %zu buffers not destroyed\n", ctx->buffer_count)
   }
 
   for (ulong i=0; i<ctx->buffer_count; i++) {
     if (ctx->buffers[i].alive) {
-      __FEDL_LOG(ctx->logfd, "[LEAK] buffer id=%u is alive\n", i)
+      __FEDL_LOG(ctx->logfd, "[LEAK] buffer id=%zu is alive\n", i)
       free(ctx->buffers[i].data);
     }
   }
@@ -82,7 +82,7 @@ FeBuffer fe_create_buffer_debugblank(FeContext *_ctx, const FeBufferDesc *desc)
 
   if (!desc || desc->size==0) {
     __FEDL_LOG(ctx->logfd, "[ERROR] invalid buffer desc\n")
-    return 0;
+    return FE_INVALID_BUFFER;
   }
 
   /* allocator */
@@ -91,29 +91,54 @@ FeBuffer fe_create_buffer_debugblank(FeContext *_ctx, const FeBufferDesc *desc)
     ctx->buffers = realloc(ctx->buffers, ctx->buffer_capacity * sizeof(*ctx->buffers));
   }
 
-  FeBuffer id;
+  ulong id;
   if (ctx->buffers_free.size > 0) {
     id = ctx->buffers_free.list[--ctx->buffers_free.size];
   } else {
     id = ctx->buffer_count++;
   }
-  ctx->buffers[id].size = desc->size;
-  ctx->buffers[id].data = malloc(desc->size);
+
+  NullBuffer *b = &ctx->buffers[id];
+
+  b->size = desc->size;
+  b->data = malloc(desc->size);
+  b->gen++;
+
+  FeBuffer handle = {
+    .ind = id,
+    .gen = b->gen
+  };
 
   if (desc->data) {
-    memcpy(ctx->buffers[id].data, desc->data, desc->size);
+    memcpy(b->data, desc->data, desc->size);
   }
 
-  ctx->buffers[id].alive = 1;
+  b->alive = 1;
   ctx->buffers_alive++;
-  __FEDL_LOG(ctx->logfd, "[INFO] create buffer id=%u size=%zu addr=%p\n", id, desc->size, ctx->buffers[id].data)
-  return id;
+  __FEDL_LOG(ctx->logfd, "[INFO] create buffer id=%zu size=%zu addr=%p\n", id, desc->size, b->data)
+  return handle;
+}
+
+inline int fe_check_buffer_debugblank(FeContext *_ctx, FeBuffer h)
+{
+  NullContext *ctx = (void *)_ctx;
+  if (h.ind >= ctx->buffer_count) return 0;
+  NullBuffer *b = &ctx->buffers[h.ind];
+
+  if (b->alive && b->gen == h.gen) {
+    if (b->alive) return FE_STALE_BUFFER;
+    return FE_DEAD_BUFFER;
+  }
+
+  return FE_OK;
 }
 
 void fe_bind_vertex_buffer_debugblank(FeCmdBuffer *cmd, FeBuffer buf)
 {
-  if (buf >= last_buf_context->buffer_count) {
-    __FEDL_LOG(last_buf_context->logfd, "[ERROR] invalid buffer id=%u\n", buf)
+  NullContext *ctx = last_buf_context;
+
+  if (fe_check_buffer_debugblank((void*)ctx, buf) != FE_OK) {
+    __FEDL_LOG(last_buf_context->logfd, "[ERROR] invalid buffer id=%zu\n", buf.ind)
     return;
   }
 
@@ -121,6 +146,7 @@ void fe_bind_vertex_buffer_debugblank(FeCmdBuffer *cmd, FeBuffer buf)
     .type = FE_CMD_BIND_VERTEX_BUFFER,
     .buffer = buf,
   };
+
   //push_cmd(cmd, c);
 }
 
@@ -128,15 +154,19 @@ void fe_free_buffer_debugblank(FeContext *_ctx, FeBuffer buf)
 {
   NullContext *ctx = (NullContext*)_ctx;
 
-  if (buf >= ctx->buffer_count) {
-    __FEDL_LOG(ctx->logfd, "[ERROR] free invalid buffer id=%u\n", buf)
+  if (buf.ind >= ctx->buffer_count) {
+    __FEDL_LOG(ctx->logfd, "[ERROR] free invalid buffer id=%zu\n", buf.ind)
     return;
   }
 
-  NullBuffer *b = &ctx->buffers[buf];
+  NullBuffer *b = &ctx->buffers[buf.ind];
   if (!b->alive) {
-    __FEDL_LOG(ctx->logfd, "[CORRUPT] double-free buffer id=%u\n", buf)
+    __FEDL_LOG(ctx->logfd, "[CORRUPT] double-free buffer id=%zu\n", buf.ind)
     return;
+  }
+
+  if (b->gen != buf.gen) {
+    __FEDL_LOG(ctx->logfd, "[CORRUPT] stale buffer handle id=%zu gen=%zu\n", buf.ind, buf.gen)
   }
 
   /* allocator */
@@ -145,12 +175,13 @@ void fe_free_buffer_debugblank(FeContext *_ctx, FeBuffer buf)
     ctx->buffers_free.list = realloc(ctx->buffers_free.list, ctx->buffers_free.capacity * sizeof(*ctx->buffers_free.list));
   }
 
-  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u addr=%p\n", buf, b->data)
+  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%zu addr=%p\n", buf.ind, b->data)
   free(b->data);
   b->data = 0;
   b->size = 0;
   b->alive = 0;
+  b->gen++;
   ctx->buffers_alive--;
-  ctx->buffers_free.list[ctx->buffers_free.size++] = buf;
+  ctx->buffers_free.list[ctx->buffers_free.size++] = buf.ind;
 }
 
