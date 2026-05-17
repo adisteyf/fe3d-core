@@ -64,13 +64,13 @@ FeRenderAPI (*fe_renderapi_version)(void);
  * @return context
  * @see fe_shutdown
  */
-FeContext *(*fe_render_init)(const FeRInitDesc *);
+FeContext *fe_render_init(const FeRInitDesc *);
 
 /**
  * @brief destroys context
  * @see fe_init
  */
-void       (*fe_render_shutdown)(FeContext *);
+void       fe_render_shutdown(FeContext *);
 
 typedef struct {
 	size_t size;
@@ -79,26 +79,30 @@ typedef struct {
 } FeBufferDesc;
 
 /* create tier */
-FeBuffer (*fe_create_buffer)(FeContext *, const FeBufferDesc *);
-void (*fe_free_buffer)(FeContext *, FeBuffer);
+FeBuffer fe_create_buffer(FeContext *, const FeBufferDesc *);
+void fe_free_buffer(FeContext *, FeBuffer);
 
 typedef struct {
 	int stage;
 	const char *code;
 } FeShaderDesc;
 
-FeShader (*fe_create_shader)(FeContext *, const FeShaderDesc *);
+FeShader fe_create_shader(FeContext *, const FeShaderDesc *);
 
 typedef struct {
 	FeShader vs,fs;
 } FePipelineDesc;
 
-FePipeline (*fe_create_pipeline)(FeContext *, const FePipelineDesc *);
+FePipeline fe_create_pipeline(FeContext *, const FePipelineDesc *);
 
 typedef enum {
 	FE_CMD_BEGIN_PASS,
 	FE_CMD_END_PASS,
 	FE_CMD_BIND_PIPELINE,
+
+  FE_CMD_CREATE_BUFFER,
+  FE_CMD_DESTROY_BUFFER,
+
 	FE_CMD_BIND_VERTEX_BUFFER,
 	FE_CMD_DRAW,
 } FeCmdType;
@@ -110,10 +114,22 @@ typedef struct {
 typedef struct {
 	FeCmdType type;
 	union {
-		FePassDesc pass;
-		FePipeline pipeline;
-		FeBuffer   buffer;
-		struct { uint32_t vertex_count; } draw;
+    struct {
+      FeBuffer h;
+      FeBufferDesc desc;
+    } create_buffer;
+
+    struct {
+      FeBuffer h;
+    } destroy_buffer;
+
+    struct {
+      FeBuffer h;
+    } bind_vertex_buffer;
+
+    struct {
+      uint32_t vertex_count;
+    } draw;
 	};
 } FeCmd;
 
@@ -129,11 +145,11 @@ typedef struct {
  * @brief is window closed
  * @return 1 if window was closed and 0 if it wasn't
  */
-int (*fe_window_isclosed)(FeContext *);
+int fe_window_isclosed(FeContext *);
 
 /* API begin */
-FeCmdBuffer *(*fe_cmd_begin)(FeContext *);
-void         (*fe_cmd_end)(FeCmdBuffer *);
+FeCmdBuffer *fe_cmd_begin(FeContext *);
+void         fe_cmd_end(FeCmdBuffer *);
 
 /**
  * @brief sumbits @ref FeCmdBuffer to GPU
@@ -142,11 +158,11 @@ void         (*fe_cmd_end)(FeCmdBuffer *);
 void         (*fe_submit)(FeContext *, FeCmdBuffer *);
 
 /* DSL */
-void (*fe_begin_pass)(FeCmdBuffer *, const FePassDesc *);
-void (*fe_end_pass)(FeCmdBuffer *);
-void (*fe_bind_pipeline)(FeCmdBuffer *, FePipeline);
-void (*fe_bind_vertex_buffer)(FeCmdBuffer *, FeBuffer);
-void (*fe_draw)(FeCmdBuffer *, uint32_t vertex_count);
+void fe_begin_pass(FeCmdBuffer *, const FePassDesc *);
+void fe_end_pass(FeCmdBuffer *);
+void fe_bind_pipeline(FeCmdBuffer *, FePipeline);
+void fe_bind_vertex_buffer(FeCmdBuffer *, FeBuffer);
+void fe_draw(FeCmdBuffer *, uint32_t vertex_count);
 
 #define fe_pass(cmd, desc) \
 	for (int _fe_pass__i = (fe_begin_pass(cmd, desc), 0); !_fe_pass__i; fe_end_pass(cmd), _fe_pass__i++)
@@ -161,18 +177,20 @@ int fe_render_api(char *path, FeBackends *febs, void *outfd)
 
 	fedl_sym syms[] = {
 		FEDL_SYM(fe_renderapi_version)
-		FEDL_SYM(fe_render_init)
-		FEDL_SYM(fe_render_shutdown)
-		FEDL_SYM(fe_create_buffer)
-		FEDL_SYM(fe_free_buffer)
+		// FEDL_SYM(fe_render_init)
+		// FEDL_SYM(fe_render_shutdown)
+		// FEDL_SYM(fe_create_buffer)
+		// FEDL_SYM(fe_free_buffer)
 		/*FEDL_SYM(fe_create_shader)
 		FEDL_SYM(fe_create_pipeline)
 		FEDL_SYM(fe_bind_pipeline)*/
-		FEDL_SYM(fe_bind_vertex_buffer)
+		// FEDL_SYM(fe_bind_vertex_buffer)
 		/*FEDL_SYM(fe_draw)
 		FEDL_SYM(fe_cmd_begin)
 		FEDL_SYM(fe_cmd_end)
+    */
 		FEDL_SYM(fe_submit)
+    /*
 		FEDL_SYM(fe_free_backend)
 		FEDL_SYM(fe_free_backends)*/
 	};
