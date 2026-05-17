@@ -6,19 +6,39 @@
 #include <string.h>
 #include "../../dl-loader/dl-loader.h"
 
-#define FE_INVALID_BUFFER ((FeBuffer){-1,0})
+#define FE_INVALID_BUFFER 0x00
 #define FE_INVALID_INDEX (unsigned long)-1
-#define FE_STALE_BUFFER 0x03;
-#define FE_DEAD_BUFFER 0x04;
+#define FE_STALE_BUFFER 0x03
+#define FE_DEAD_BUFFER 0x04
 #define FE_OK 0x00
 
 typedef struct FeContext {
 	void *logfd;
 } FeContext;
 //typedef uint32_t FeBuffer;
+/*
 typedef struct {
   ulong ind,gen;
 } FeBuffer;
+*/
+typedef uint64_t FeBuffer;
+
+static inline FeBuffer
+fe_buffer_make(uint32_t ind, uint32_t gen) {
+  return ((uint64_t)gen<<32)|ind;
+}
+
+static inline uint32_t
+fe_buffer_index(FeBuffer h) {
+  return (uint32_t)(h&0xffffffff);
+}
+
+static inline uint32_t
+fe_buffer_generation(FeBuffer h) {
+  return (uint32_t)(h>>32);
+}
+
+
 typedef uint32_t FePipeline;
 typedef uint32_t FeShader;
 

@@ -104,10 +104,7 @@ FeBuffer fe_create_buffer_debugblank(FeContext *_ctx, const FeBufferDesc *desc)
   b->data = malloc(desc->size);
   b->gen++;
 
-  FeBuffer handle = {
-    .ind = id,
-    .gen = b->gen
-  };
+  FeBuffer handle = fe_buffer_make(id, b->gen);
 
   if (desc->data) {
     memcpy(b->data, desc->data, desc->size);
@@ -122,10 +119,10 @@ FeBuffer fe_create_buffer_debugblank(FeContext *_ctx, const FeBufferDesc *desc)
 inline int fe_check_buffer_debugblank(FeContext *_ctx, FeBuffer h)
 {
   NullContext *ctx = (void *)_ctx;
-  if (h.ind >= ctx->buffer_count) return 0;
-  NullBuffer *b = &ctx->buffers[h.ind];
+  if (fe_buffer_index(h) >= ctx->buffer_count) return 0;
+  NullBuffer *b = &ctx->buffers[fe_buffer_index(h)];
 
-  if (b->alive && b->gen == h.gen) {
+  if (b->alive && b->gen == fe_buffer_generation(h)) {
     if (b->alive) return FE_STALE_BUFFER;
     return FE_DEAD_BUFFER;
   }
@@ -138,7 +135,7 @@ void fe_bind_vertex_buffer_debugblank(FeCmdBuffer *cmd, FeBuffer buf)
   NullContext *ctx = last_buf_context;
 
   if (fe_check_buffer_debugblank((void*)ctx, buf) != FE_OK) {
-    __FEDL_LOG(last_buf_context->logfd, "[ERROR] invalid buffer id=%zu\n", buf.ind)
+    __FEDL_LOG(last_buf_context->logfd, "[ERROR] invalid buffer id=%u\n", fe_buffer_index(buf))
     return;
   }
 
@@ -154,19 +151,19 @@ void fe_free_buffer_debugblank(FeContext *_ctx, FeBuffer buf)
 {
   NullContext *ctx = (NullContext*)_ctx;
 
-  if (buf.ind >= ctx->buffer_count) {
-    __FEDL_LOG(ctx->logfd, "[ERROR] free invalid buffer id=%zu\n", buf.ind)
+  if (fe_buffer_index(buf) >= ctx->buffer_count) {
+    __FEDL_LOG(ctx->logfd, "[ERROR] free invalid buffer id=%u\n", fe_buffer_index(buf))
     return;
   }
 
-  NullBuffer *b = &ctx->buffers[buf.ind];
+  NullBuffer *b = &ctx->buffers[fe_buffer_index(buf)];
   if (!b->alive) {
-    __FEDL_LOG(ctx->logfd, "[CORRUPT] double-free buffer id=%zu\n", buf.ind)
+    __FEDL_LOG(ctx->logfd, "[CORRUPT] double-free buffer id=%u\n", fe_buffer_index(buf))
     return;
   }
 
-  if (b->gen != buf.gen) {
-    __FEDL_LOG(ctx->logfd, "[CORRUPT] stale buffer handle id=%zu gen=%zu\n", buf.ind, buf.gen)
+  if (b->gen != fe_buffer_generation(buf)) {
+    __FEDL_LOG(ctx->logfd, "[CORRUPT] stale buffer handle id=%u gen=%u\n", fe_buffer_index(buf), fe_buffer_generation(buf))
   }
 
   /* allocator */
@@ -175,13 +172,13 @@ void fe_free_buffer_debugblank(FeContext *_ctx, FeBuffer buf)
     ctx->buffers_free.list = realloc(ctx->buffers_free.list, ctx->buffers_free.capacity * sizeof(*ctx->buffers_free.list));
   }
 
-  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%zu addr=%p\n", buf.ind, b->data)
+  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u addr=%p\n", fe_buffer_index(buf), b->data)
   free(b->data);
   b->data = 0;
   b->size = 0;
   b->alive = 0;
   b->gen++;
   ctx->buffers_alive--;
-  ctx->buffers_free.list[ctx->buffers_free.size++] = buf.ind;
+  ctx->buffers_free.list[ctx->buffers_free.size++] = fe_buffer_index(buf);
 }
 
