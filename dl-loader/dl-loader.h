@@ -27,7 +27,6 @@ typedef struct {
 } FeBackends;
 
 
-FeBackends fedl_init(void);
 int fedl_loadsyms(FeBackend *feb, fedl_sym *syms, ulong len, const char *postfix, void *out);
 FeBackend fe_load_backend(char *path, int *status, void *out); /* w/o extension */
 void      fe_free_backend(FeBackend *);

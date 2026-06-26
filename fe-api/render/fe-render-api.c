@@ -40,7 +40,6 @@ fe_buffer_generation(FeBuffer h) {
 
 
 typedef uint32_t FePipeline;
-typedef uint32_t FeShader;
 
 #define FER_API_MAJOR 0
 #define FER_API_MINOR 1
@@ -82,15 +81,25 @@ typedef struct {
 FeBuffer fe_create_buffer(FeContext *, const FeBufferDesc *);
 void fe_free_buffer(FeContext *, FeBuffer);
 
-typedef struct {
-	int stage;
-	const char *code;
-} FeShaderDesc;
+typedef enum {
+  FE_SHADER_CODE_TYPE_GLSL,
+  FE_SHADER_CODE_TYPE_SPIRV,
+} FeShaderCodeType;
+typedef uint64_t FeShaderModule;
 
-FeShader fe_create_shader(FeContext *, const FeShaderDesc *);
+typedef struct {
+  FeShaderModule module;
+  char entry[32];
+} FeShaderStageDesc;
 
 typedef struct {
-	FeShader vs,fs;
+	void *code;
+  FeShaderCodeType type;
+} FeShaderModuleDesc;
+FeShaderModule fe_create_shader_module(FeContext *, const FeShaderModuleDesc *);
+
+typedef struct {
+	FeShaderStageDesc vs,fs;
 } FePipelineDesc;
 
 FePipeline fe_create_pipeline(FeContext *, const FePipelineDesc *);

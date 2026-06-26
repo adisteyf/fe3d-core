@@ -4,7 +4,7 @@
 
 int main()
 {
-  FeBackends febs = fedl_init();
+  FeBackends febs = {0};
   if (fe_render_api("./libfer-backend_debugblank", &febs, stdout)) {
     printf("failed to load fe_render backend\n");
     return -1;
@@ -29,23 +29,23 @@ int main()
 	};
 	FeBuffer vbuf = fe_create_buffer(ctx, &buf_desc);
 
-	FeShaderDesc shader_desc = {
-		.stage = 0,
-		.code  = "vertex",
-	};
-	FeShader vs = fe_create_shader(ctx, &shader_desc);
+  FeShaderModuleDesc shader_desc = {
+    .code = "<spirv_binary_data>",
+    .type = FE_SHADER_CODE_TYPE_SPIRV
+  };
+  FeShaderModule shader = fe_create_shader_module(ctx, &shader_desc);
 
-	FeShaderDesc shader_desc2 = {
-		.stage = 1,
-		.code  = "fragment",
+	FePipelineDesc pipeline_desc = {
+		.vs = {
+      .module = shader,
+      .entry = "vertMain"
+    },
+		.fs = {
+      .module = shader,
+      .entry = "fragMain"
+    }
 	};
-	FeShader fs = fe_create_shader(ctx, &shader_desc2);
-
-	FePipelineDesc pipeline = {
-		.vs = vs,
-		.fs = fs,
-	};
-	FePipeline pipeline = fe_create_pipeline(ctx, &pipeline);
+	FePipeline pipeline = fe_create_pipeline(ctx, &pipeline_desc);
 
 	while (!fe_window_isclosed(ctx)) {
 		FeCmdBuffer *cmd = fe_cmd_begin(ctx);

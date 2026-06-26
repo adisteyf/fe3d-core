@@ -48,6 +48,14 @@ fe_cmd_begin(FeContext *ctx)
 }
 
 void
+fe_cmd_reset(FeContext *_ctx)
+{
+  NullContext *ctx = (void *)_ctx;
+  bzero(ctx->cmds->data, ctx->cmds->count*sizeof(FeCmd));
+  ctx->cmds->count = 0;
+}
+
+void
 fe_cmd_submit(FeContext *_ctx)
 {
   NullContext *ctx = (void *)_ctx;
