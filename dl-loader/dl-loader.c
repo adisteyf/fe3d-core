@@ -103,19 +103,12 @@ void fe_free_backend(FeBackend *feb)
 
 void fe_free_backends(FeBackends *febs)
 {
-  fe_free_backend(&febs->render);
-  fe_free_backend(&febs->physics);
-  fe_free_backend(&febs->window);
-  fe_free_backend(&febs->sound);
-}
-
-FeBackends fedl_init()
-{
-  FeBackends febs;
-  febs.render.handle = 0;
-  febs.physics.handle = 0;
-  febs.sound.handle = 0;
-  febs.window.handle = 0;
-  return febs;
+  for (int i=0;i<4;++i) {
+    fe_free_backend(&febs->backends[i]);
+  }
+  //fe_free_backend(&febs->render);
+  //fe_free_backend(&febs->physics);
+  //fe_free_backend(&febs->window);
+  //fe_free_backend(&febs->sound);
 }
 

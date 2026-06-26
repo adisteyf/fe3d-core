@@ -15,12 +15,15 @@ typedef struct {
 } FeBackend;
 
 typedef struct {
-  FeBackend 
-    render,
-    sound,
-    physics,
-    window
-  ;
+  union {
+    FeBackend backends[4];
+    FeBackend 
+      render,
+      sound,
+      physics,
+      window
+    ;
+  };
 } FeBackends;
 
 

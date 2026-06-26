@@ -1,9 +1,15 @@
-cmake_minimum_required(VERSION 4.3.1)
+cmake_minimum_required(VERSION 4.1.2)
 project(fe3d)
 enable_testing()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+  set(CMAKE_C_STANDARD_INCLUDE_DIRECTORIES 
+      ${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES})
+endif()
 
+set(CMAKE_BUILD_PATH "\$ORIGIN")
+set(CMAKE_INSTALL_RPATH "\$ORIGIN/.")
 
 find_package(Doxygen REQUIRED)
 if (DOXYGEN_FOUND)
@@ -44,6 +50,7 @@ foreach (TEST_FILE ${TEST_SOURCES})
 
       target_link_options("${TEST_NAME}" PRIVATE
         -fsanitize=address
+        -rdynamic
       )
       #endif()
 

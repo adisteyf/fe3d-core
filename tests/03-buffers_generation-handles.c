@@ -6,7 +6,7 @@
 #include <assert.h>
 
 int main() {
-  FeBackends febs = fedl_init();
+  FeBackends febs = {0};
   if (fe_render_api("./libfer-backend_debugblank", &febs, stdout)) {
     printf("failed to load fe_render backend\n");
     return -1;
