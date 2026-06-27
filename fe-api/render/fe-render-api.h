@@ -15,12 +15,7 @@
 typedef struct FeContext {
 	void *logfd;
 } FeContext;
-//typedef uint32_t FeBuffer;
-/*
-typedef struct {
-  ulong ind,gen;
-} FeBuffer;
-*/
+
 typedef uint64_t FeBuffer;
 
 static inline FeBuffer
@@ -56,6 +51,8 @@ typedef struct {
   int major,minor,patch;
 } FeRenderAPI;
 
+
+int fe_render_api(char *path, FeBackends *febs, void *outfd);
 FeRenderAPI (*fe_renderapi_version)(void);
 
 /**
@@ -71,10 +68,15 @@ FeContext *fe_render_init(const FeRInitDesc *);
  */
 void       fe_render_shutdown(FeContext *);
 
+typedef enum {
+  FE_VERTEX_BUFFER,
+  FE_STORAGE_BUFFER,
+} FeBufferUsage;
+
 typedef struct {
 	size_t size;
 	const void *data;
-	uint32_t usage;
+	FeBufferUsage usage;
 } FeBufferDesc;
 
 /* create tier */
@@ -165,6 +167,7 @@ void         fe_cmd_end(FeCmdBuffer *);
  * submits command buffer to GPU & destroys @ref FeCmdBuffer
  */
 void         (*fe_submit)(FeContext *, FeCmdBuffer *);
+void         (*fe_execute)(FeContext *, FeCmd *);
 
 /* DSL */
 void fe_begin_pass(FeCmdBuffer *, const FePassDesc *);
@@ -175,37 +178,5 @@ void fe_draw(FeCmdBuffer *, uint32_t vertex_count);
 
 #define fe_pass(cmd, desc) \
 	for (int _fe_pass__i = (fe_begin_pass(cmd, desc), 0); !_fe_pass__i; fe_end_pass(cmd), _fe_pass__i++)
-
-int fe_render_api(char *path, FeBackends *febs, void *outfd)
-{
-	int status=0;
-	char *postfix = strchr(path, '_');
-	febs->render = fe_load_backend(path, &status, outfd);
-	if (status) return status;
-	__FEDL_LOG(outfd, "[INFO] loading fe_render_api symbols\n")
-
-	fedl_sym syms[] = {
-		FEDL_SYM(fe_renderapi_version)
-		// FEDL_SYM(fe_render_init)
-		// FEDL_SYM(fe_render_shutdown)
-		// FEDL_SYM(fe_create_buffer)
-		// FEDL_SYM(fe_free_buffer)
-		/*FEDL_SYM(fe_create_shader)
-		FEDL_SYM(fe_create_pipeline)
-		FEDL_SYM(fe_bind_pipeline)*/
-		// FEDL_SYM(fe_bind_vertex_buffer)
-		/*FEDL_SYM(fe_draw)
-		FEDL_SYM(fe_cmd_begin)
-		FEDL_SYM(fe_cmd_end)
-    */
-		FEDL_SYM(fe_submit)
-    /*
-		FEDL_SYM(fe_free_backend)
-		FEDL_SYM(fe_free_backends)*/
-	};
-
-	status = fedl_loadsyms(&febs->render, syms, sizeof(syms)/sizeof(syms[0]), postfix, outfd);
-	return status;
-}
 
 #endif // __FE_RENDER_API

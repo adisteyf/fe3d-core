@@ -1,32 +1,41 @@
-#include "fe-render-api.c"
+#include "fe-render-api.h"
 #include <string.h>
 #include "../../dl-loader/dl-loader.h"
+#include "rhi.h"
 
-typedef struct {
-  //void *data;
-  uint32_t size,gen;
-  int alive;
+int fe_render_api(char *path, FeBackends *febs, void *outfd)
+{
+	int status=0;
+	char *postfix = strchr(path, '_');
+	febs->render = fe_load_backend(path, &status, outfd);
+	if (status) return status;
+	__FEDL_LOG(outfd, "[INFO] loading fe_render_api symbols\n")
 
-  struct {
-    void *data;
-  } native;
-} NullBuffer;
+	fedl_sym syms[] = {
+		FEDL_SYM(fe_renderapi_version)
+		// FEDL_SYM(fe_render_init)
+		// FEDL_SYM(fe_render_shutdown)
+		// FEDL_SYM(fe_create_buffer)
+		// FEDL_SYM(fe_free_buffer)
+		/*FEDL_SYM(fe_create_shader)
+		FEDL_SYM(fe_create_pipeline)
+		FEDL_SYM(fe_bind_pipeline)*/
+		// FEDL_SYM(fe_bind_vertex_buffer)
+		/*FEDL_SYM(fe_draw)
+		FEDL_SYM(fe_cmd_begin)
+		FEDL_SYM(fe_cmd_end)
+    */
+		FEDL_SYM(fe_submit)
+		FEDL_SYM(fe_execute)
+    /*
+		FEDL_SYM(fe_free_backend)
+		FEDL_SYM(fe_free_backends)*/
+	};
 
-typedef struct NullContext {
-  /* FeContext */
-  void *logfd;
+	status = fedl_loadsyms(&febs->render, syms, sizeof(syms)/sizeof(syms[0]), postfix, outfd);
+	return status;
+}
 
-  /* API */
-  ulong buffer_count,buffer_capacity,buffers_alive;
-  struct {
-    ulong *list,size,capacity;
-  } buffers_free;
-  NullBuffer *buffers;
-
-  FeCmdBuffer *cmds;
-  ulong framebuffer_count;
-  ulong frame;
-} NullContext;
 
 static void
 push_cmd(FeCmdBuffer *cmd, FeCmd c)
@@ -132,6 +141,7 @@ FeBuffer fe_create_buffer(FeContext *_ctx, const FeBufferDesc *desc)
   b->size = desc->size;
   //b->data = malloc(desc->size);
   b->gen++;
+  b->usage = desc->usage;
 
   FeBuffer handle = fe_buffer_make(id, b->gen);
 
@@ -149,7 +159,7 @@ FeBuffer fe_create_buffer(FeContext *_ctx, const FeBufferDesc *desc)
 
   c.create_buffer.h = handle;
   c.create_buffer.desc = *desc;
-  push_cmd(ctx->cmds, c);
+  fe_execute(_ctx, &c);
 
   return handle;
 }
@@ -221,6 +231,6 @@ void fe_free_buffer(FeContext *_ctx, FeBuffer buf)
   };
 
   c.destroy_buffer.h = buf;
-  push_cmd(ctx->cmds, c);
+  fe_execute(_ctx, &c);
 }
 

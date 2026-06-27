@@ -1,9 +1,10 @@
 #ifndef __FE_RENDER_API
 //#include "../fe-api/render/fe-render-api.c"
-#include "../fe-api/render/rhi.c"
+//#include "../fe-api/render/rhi.c"
 #endif
 #include <stdio.h>
 #include <assert.h>
+#include "../fe-api/render/fe-render-api.h"
 
 int main() {
   FeBackends febs = {0};
@@ -22,7 +23,7 @@ int main() {
   FeBufferDesc buffer_desc = {
     .size = sizeof(vertices),
     .data = vertices,
-    .usage = 0,
+    .usage = FE_VERTEX_BUFFER,
   };
 
   FeBuffer old_buf = fe_create_buffer(ctx, &buffer_desc);
@@ -36,7 +37,7 @@ int main() {
   assert(fe_buffer_index(old_buf) == fe_buffer_index(new_buf));
   assert(fe_buffer_generation(old_buf) != fe_buffer_generation(new_buf));
 
-  fe_cmd_submit(ctx);
+  //fe_cmd_submit(ctx);
 
   fe_render_shutdown(ctx);
   fe_free_backends(&febs);

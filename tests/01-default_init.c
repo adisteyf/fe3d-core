@@ -1,5 +1,5 @@
 //#include "../fe-api/render/fe-render-api.c"
-#include "../fe-api/render/rhi.c"
+#include "../fe-api/render/fe-render-api.h"
 #include "dl-loader.h"
 #include <stdio.h>
 

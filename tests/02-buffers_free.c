@@ -1,9 +1,10 @@
 #ifndef __FE_RENDER_API
 //#include "../fe-api/render/fe-render-api.c"
-#include "../fe-api/render/rhi.c"
+//#include "../fe-api/render/rhi.c"
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include "../fe-api/render/fe-render-api.h"
 
 int main() {
   FeBackends febs = {0};
@@ -27,12 +28,12 @@ int main() {
   FeBufferDesc buffer_desc = {
     .size = 16,
     .data = _data,
-    .usage = 0,
+    .usage = FE_STORAGE_BUFFER,
   };
   FeBuffer buffer = fe_create_buffer(ctx, &buffer_desc);
   free(_data);
   fe_free_buffer(ctx, buffer);
-  fe_cmd_submit(ctx);
+  //fe_cmd_submit(ctx);
 
   fe_render_shutdown(ctx);
   fe_free_backends(&febs);

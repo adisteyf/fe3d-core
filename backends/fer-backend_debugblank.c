@@ -1,4 +1,5 @@
-#include "../fe-api/render/rhi.c"
+//#include "../fe-api/render/rhi.c"
+#include "../fe-api/render/rhi.h"
 
 
 FeRenderAPI fe_renderapi_version_debugblank(void)
@@ -13,14 +14,11 @@ FeRenderAPI fe_renderapi_version_debugblank(void)
   return ferapi;
 }
 
-
-void fe_submit_debugblank(FeContext *ctx, FeCmdBuffer *cmd)
+void fe_execute_debugblank(FeContext *ctx, FeCmd *c)
 {
-  for (uint32_t i=0; i<cmd->count; ++i) {
-    FeCmd *c = &cmd->data[i];
-    NullContext *nctx = (void *)ctx;
-    
-    switch (c->type) {
+  NullContext *nctx = (void *)ctx;
+
+  switch (c->type) {
 case FE_CMD_CREATE_BUFFER:
 {
   FeBuffer h = c->create_buffer.h;
@@ -32,7 +30,8 @@ case FE_CMD_CREATE_BUFFER:
 
   memcpy(b->native.data, desc->data, desc->size);
 
-  __FEDL_LOG(ctx->logfd, "create buffer handle=%zu size=%zu\n", c->create_buffer.h, c->create_buffer.desc.size)
+  __FEDL_LOG(ctx->logfd, "create buffer handle=%zu size=%zu usage=%u\n", c->create_buffer.h, c->create_buffer.desc.size,
+      c->create_buffer.desc.usage)
   break;
 }
 
@@ -53,6 +52,13 @@ case FE_CMD_DESTROY_BUFFER:
   __FEDL_LOG(ctx->logfd, "destroy buffer handle=%zu\n", c->destroy_buffer.h)
   break;
 }
-    }
+  }
+}
+
+void fe_submit_debugblank(FeContext *ctx, FeCmdBuffer *cmd)
+{
+  for (uint32_t i=0; i<cmd->count; ++i) {
+    FeCmd *c = &cmd->data[i];
+    fe_execute_debugblank(ctx, c);
   }
 }

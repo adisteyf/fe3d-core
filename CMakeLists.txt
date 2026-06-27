@@ -34,6 +34,7 @@ endif ()
 
 add_library(dl-loader STATIC dl-loader/dl-loader.c)
 add_library(fer-backend_debugblank SHARED backends/fer-backend_debugblank.c)
+add_library(fe3d-core SHARED fe-api/render/rhi.c)
 target_include_directories(dl-loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/dl-loader")
 
 file(GLOB TEST_SOURCES tests/*.c)
@@ -54,7 +55,7 @@ foreach (TEST_FILE ${TEST_SOURCES})
       )
       #endif()
 
-    target_link_libraries("${TEST_NAME}" dl-loader)
+    target_link_libraries("${TEST_NAME}" dl-loader fe3d-core)
     add_test(NAME "${TEST_NAME}" COMMAND "${TEST_NAME}")
 endforeach ()
 
