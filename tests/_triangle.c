@@ -1,4 +1,4 @@
-#include "../fe-api/render/fe-render-api.c"
+#include "../fe-api/render/fe-render-api.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -25,7 +25,7 @@ int main()
 	FeBufferDesc buf_desc = {
 		.size  = sizeof(vertices),
 		.data  = vertices,
-		.usage = 0,
+		.usage = FE_VERTEX_BUFFER,
 	};
 	FeBuffer vbuf = fe_create_buffer(ctx, &buf_desc);
 

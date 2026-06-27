@@ -14,12 +14,8 @@ FeRenderAPI fe_renderapi_version_debugblank(void)
   return ferapi;
 }
 
-void fe_execute_debugblank(FeContext *ctx, FeCmd *c)
-{
-  NullContext *nctx = (void *)ctx;
-
-  switch (c->type) {
-case FE_CMD_CREATE_BUFFER:
+static inline void
+fe_cmd_create_buffer(NullContext *nctx, FeCmd *c)
 {
   FeBuffer h = c->create_buffer.h;
   uint32_t ind = fe_buffer_index(h);
@@ -30,8 +26,30 @@ case FE_CMD_CREATE_BUFFER:
 
   memcpy(b->native.data, desc->data, desc->size);
 
-  __FEDL_LOG(ctx->logfd, "create buffer handle=%zu size=%zu usage=%u\n", c->create_buffer.h, c->create_buffer.desc.size,
+  __FEDL_LOG(nctx->logfd, "create buffer handle=%zu size=%zu usage=%u\n", c->create_buffer.h, c->create_buffer.desc.size,
       c->create_buffer.desc.usage)
+}
+
+static inline void
+fe_cmd_destroy_buffer(NullContext *nctx, FeCmd *c)
+{
+  FeBuffer h = c->create_buffer.h;
+  uint32_t ind = fe_buffer_index(h);
+
+  NullBuffer *b = &nctx->buffers[ind];
+  free(b->native.data);
+
+  __FEDL_LOG(nctx->logfd, "destroy buffer handle=%zu\n", c->destroy_buffer.h)
+}
+
+void fe_execute_debugblank(FeContext *ctx, FeCmd *c)
+{
+  NullContext *nctx = (void *)ctx;
+
+  switch (c->type) {
+case FE_CMD_CREATE_BUFFER:
+{
+  fe_cmd_create_buffer(nctx, c);
   break;
 }
 
@@ -43,13 +61,7 @@ case FE_CMD_BIND_VERTEX_BUFFER:
 
 case FE_CMD_DESTROY_BUFFER:
 {
-  FeBuffer h = c->create_buffer.h;
-  uint32_t ind = fe_buffer_index(h);
-
-  NullBuffer *b = &nctx->buffers[ind];
-  free(b->native.data);
-
-  __FEDL_LOG(ctx->logfd, "destroy buffer handle=%zu\n", c->destroy_buffer.h)
+  fe_cmd_destroy_buffer(nctx, c);
   break;
 }
   }
