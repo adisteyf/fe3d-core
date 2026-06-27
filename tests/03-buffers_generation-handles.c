@@ -27,15 +27,15 @@ int main() {
   };
 
   FeBuffer old_buf = fe_create_buffer(ctx, &buffer_desc);
-  printf("old: i=%u gen=%u\n", fe_buffer_index(old_buf), fe_buffer_generation(old_buf));
+  printf("old: i=%u gen=%u\n", fe_object_index(old_buf), fe_object_generation(old_buf));
   fe_free_buffer(ctx, old_buf);
 
   FeBuffer new_buf = fe_create_buffer(ctx, &buffer_desc);
-  printf("new: i=%u gen=%u\n", fe_buffer_index(new_buf), fe_buffer_generation(new_buf));
+  printf("new: i=%u gen=%u\n", fe_object_index(new_buf), fe_object_generation(new_buf));
   fe_free_buffer(ctx, new_buf);
 
-  assert(fe_buffer_index(old_buf) == fe_buffer_index(new_buf));
-  assert(fe_buffer_generation(old_buf) != fe_buffer_generation(new_buf));
+  assert(fe_object_index(old_buf) == fe_object_index(new_buf));
+  assert(fe_object_generation(old_buf) != fe_object_generation(new_buf));
 
   //fe_cmd_submit(ctx);
 

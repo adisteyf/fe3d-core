@@ -18,13 +18,13 @@ static inline void
 fe_cmd_create_buffer(NullContext *nctx, FeCmd *c)
 {
   FeBuffer h = c->create_buffer.h;
-  uint32_t ind = fe_buffer_index(h);
+  uint32_t ind = fe_object_index(h);
 
-  NullBuffer *b = &nctx->buffers[ind];
+  NullObject *b = &nctx->objects[ind];
   const FeBufferDesc *desc = &c->create_buffer.desc;
-  b->native.data = malloc(desc->size);
+  b->buffer.native.data = malloc(desc->size);
 
-  memcpy(b->native.data, desc->data, desc->size);
+  memcpy(b->buffer.native.data, desc->data, desc->size);
 
   __FEDL_LOG(nctx->logfd, "create buffer handle=%zu size=%zu usage=%u\n", c->create_buffer.h, c->create_buffer.desc.size,
       c->create_buffer.desc.usage)
@@ -34,10 +34,10 @@ static inline void
 fe_cmd_destroy_buffer(NullContext *nctx, FeCmd *c)
 {
   FeBuffer h = c->create_buffer.h;
-  uint32_t ind = fe_buffer_index(h);
+  uint32_t ind = fe_object_index(h);
 
-  NullBuffer *b = &nctx->buffers[ind];
-  free(b->native.data);
+  NullObject *b = &nctx->objects[ind];
+  free(b->buffer.native.data);
 
   __FEDL_LOG(nctx->logfd, "destroy buffer handle=%zu\n", c->destroy_buffer.h)
 }

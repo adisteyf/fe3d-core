@@ -5,27 +5,34 @@
 #include "fe-render-api.h"
 
 typedef struct {
-  //void *data;
-  uint32_t size,gen;
+  uint32_t gen;
   int alive;
-  FeBufferUsage usage;
+  FeObjectType type;
 
+  // TODO: union
   struct {
-    void *data;
-  } native;
-} NullBuffer;
+    uint32_t size;
+    FeBufferUsage usage;
+
+    struct {
+      void *data;
+    } native;
+  } buffer;
+} NullObject;
 
 typedef struct NullContext {
   /* FeContext */
   void *logfd;
 
   /* API */
-  ulong buffer_count,buffer_capacity,buffers_alive;
   struct {
-    ulong *list,size,capacity;
-  } buffers_free;
-  NullBuffer *buffers;
+    ulong count,capacity,alive;
+    struct {
+      ulong *list,size,capacity;
+    } free;
+  } objects_info;
 
+  NullObject *objects;
   FeCmdBuffer *cmds;
   ulong framebuffer_count;
   ulong frame;

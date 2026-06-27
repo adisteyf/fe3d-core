@@ -76,13 +76,13 @@ FeContext *fe_render_init(const FeRInitDesc *desc) {
   NullContext *ctx = malloc(sizeof(NullContext));
   ctx->logfd = desc->out_fd;
   ctx->frame = 0;
-  ctx->buffers = 0;
-  ctx->buffer_count = 0;
-  ctx->buffer_capacity = 0;
-  ctx->buffers_free.list = 0;
-  ctx->buffers_free.size = 0;
-  ctx->buffers_free.capacity = 0;
-  ctx->buffers_alive = 0;
+  ctx->objects = 0;
+  ctx->objects_info.count = 0;
+  ctx->objects_info.capacity = 0;
+  ctx->objects_info.free.list = 0;
+  ctx->objects_info.free.size = 0;
+  ctx->objects_info.free.capacity = 0;
+  ctx->objects_info.alive = 0;
   ctx->framebuffer_count = 0;
   ctx->cmds = fe_cmd_begin((void *)ctx);
   ctx->cmds->ctx = (void*)ctx;
@@ -94,89 +94,95 @@ void fe_render_shutdown(FeContext *_ctx)
 {
   NullContext *ctx = (NullContext*)_ctx;
 
-  if (ctx->buffers_alive) {
-    __FEDL_LOG(ctx->logfd, "[LEAK] %zu buffers not destroyed\n", ctx->buffer_count)
+  if (ctx->objects_info.alive) {
+    __FEDL_LOG(ctx->logfd, "[LEAK] %zu buffers not destroyed\n", ctx->objects_info.count)
   }
 
-  for (ulong i=0; i<ctx->buffer_count; i++) {
-    if (ctx->buffers[i].alive) {
+  for (ulong i=0; i<ctx->objects_info.count; i++) {
+    if (ctx->objects[i].alive) {
       __FEDL_LOG(ctx->logfd, "[LEAK] buffer id=%zu is alive\n", i)
       //free(ctx->buffers[i].data);
       //fe_free_buffer(ctx, ) TODO
     }
   }
 
-  free(ctx->buffers);
-  free(ctx->buffers_free.list);
+  free(ctx->objects);
+  free(ctx->objects_info.free.list);
   free(ctx->cmds->data);
   free(ctx->cmds);
   __FEDL_LOG(ctx->logfd, "[INFO] DebugBlank shutdown\n")
   free(ctx);
 }
 
-FeBuffer fe_create_buffer(FeContext *_ctx, const FeBufferDesc *desc)
+uint64_t fe_create_object(FeContext *_ctx)
 {
   NullContext *ctx = (NullContext*)_ctx;
 
+  /* allocator */
+  if (ctx->objects_info.count >= ctx->objects_info.capacity) {
+    ctx->objects_info.capacity = (ctx->objects_info.capacity) ? ctx->objects_info.capacity * 2 : 8;
+    ctx->objects = realloc(ctx->objects, ctx->objects_info.capacity * sizeof(*ctx->objects));
+  }
+
+  ulong id;
+  if (ctx->objects_info.free.size > 0) {
+    id = ctx->objects_info.free.list[--ctx->objects_info.free.size];
+  } else {
+    id = ctx->objects_info.count++;
+  }
+
+  NullObject *b = &ctx->objects[id];
+  b->gen++;
+  uint64_t handle = fe_object_make(id, b->gen);
+
+
+  b->alive = 1;
+  ctx->objects_info.alive++;
+
+  return handle;
+}
+
+FeBuffer fe_create_buffer(FeContext *_ctx, const FeBufferDesc *desc)
+{
+  NullContext *ctx = (void *)_ctx;
   if (!desc || desc->size==0) {
     __FEDL_LOG(ctx->logfd, "[ERROR] invalid buffer desc\n")
     return FE_INVALID_BUFFER;
   }
 
-  /* allocator */
-  if (ctx->buffer_count >= ctx->buffer_capacity) {
-    ctx->buffer_capacity = (ctx->buffer_capacity) ? ctx->buffer_capacity * 2 : 8;
-    ctx->buffers = realloc(ctx->buffers, ctx->buffer_capacity * sizeof(*ctx->buffers));
-  }
+  FeBuffer h = fe_create_object(_ctx);
+  uint32_t id = fe_object_index(h);
+  NullObject *b = &ctx->objects[id];
 
-  ulong id;
-  if (ctx->buffers_free.size > 0) {
-    id = ctx->buffers_free.list[--ctx->buffers_free.size];
-  } else {
-    id = ctx->buffer_count++;
-  }
+  b->buffer.size = desc->size;
+  b->buffer.usage = desc->usage;
 
-  NullBuffer *b = &ctx->buffers[id];
-
-  b->size = desc->size;
-  //b->data = malloc(desc->size);
-  b->gen++;
-  b->usage = desc->usage;
-
-  FeBuffer handle = fe_buffer_make(id, b->gen);
-
-  /*if (desc->data) {
-    memcpy(b->data, desc->data, desc->size);
-  }*/
-
-  b->alive = 1;
-  ctx->buffers_alive++;
-  __FEDL_LOG(ctx->logfd, "[INFO] create buffer cmd id=%zu size=%zu\n", id, desc->size)
-
+  __FEDL_LOG(ctx->logfd, "[INFO] create buffer cmd id=%u size=%zu\n", id, desc->size)
   FeCmd c = {
     .type = FE_CMD_CREATE_BUFFER,
   };
 
-  c.create_buffer.h = handle;
+  c.create_buffer.h = h;
   c.create_buffer.desc = *desc;
   fe_execute(_ctx, &c);
 
-  return handle;
+  return h;
 }
+
 
 int fe_check_buffer(FeContext *_ctx, FeBuffer h)
 {
   NullContext *ctx = (void *)_ctx;
-  if (fe_buffer_index(h) >= ctx->buffer_count) return 0;
-  NullBuffer *b = &ctx->buffers[fe_buffer_index(h)];
+  if (fe_object_index(h) >= ctx->objects_info.count) return 0;
+  NullObject *b = &ctx->objects[fe_object_index(h)];
 
   if (!b->alive) {
-    __FEDL_LOG(ctx->logfd, "[ERROR] dead buffer id=%u\n", fe_buffer_index(h))
+    __FEDL_LOG(ctx->logfd, "[ERROR] dead buffer id=%u\n", fe_object_index(h))
     return FE_DEAD_BUFFER;
   }
 
-  if (b->gen != fe_buffer_generation(h)) {
-    __FEDL_LOG(ctx->logfd, "[ERROR] dead buffer id=%u gen=%u\n", fe_buffer_index(h), fe_buffer_generation(h))
+  if (b->gen != fe_object_generation(h)) {
+    __FEDL_LOG(ctx->logfd, "[ERROR] dead buffer id=%u gen=%u\n", fe_object_index(h), fe_object_generation(h))
     return FE_STALE_BUFFER;
   }
 
@@ -188,7 +194,7 @@ void fe_bind_vertex_buffer(FeCmdBuffer *cmd, FeBuffer buf)
   NullContext *ctx = (void*)cmd->ctx;
 
   if (fe_check_buffer((void*)ctx, buf) != FE_OK) {
-    __FEDL_LOG(ctx->logfd, "[ERROR] invalid buffer id=%u\n", fe_buffer_index(buf))
+    __FEDL_LOG(ctx->logfd, "[ERROR] invalid buffer id=%u\n", fe_object_index(buf))
     return;
   }
 
@@ -200,31 +206,35 @@ void fe_bind_vertex_buffer(FeCmdBuffer *cmd, FeBuffer buf)
   push_cmd(cmd, c);
 }
 
-void fe_free_buffer(FeContext *_ctx, FeBuffer buf)
+void fe_free_object(FeContext *_ctx, uint64_t obj)
 {
   NullContext *ctx = (NullContext*)_ctx;
+  NullObject *b = &ctx->objects[fe_object_index(obj)];
 
+  /* allocator */
+  if (ctx->objects_info.free.size >= ctx->objects_info.free.capacity) {
+    ctx->objects_info.free.capacity = (ctx->objects_info.free.capacity) ? ctx->objects_info.free.capacity * 2 : 4;
+    ctx->objects_info.free.list = realloc(ctx->objects_info.free.list, ctx->objects_info.free.capacity * sizeof(*ctx->objects_info.free.list));
+  }
+
+  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u\n", fe_object_index(obj))
+  b->alive = 0;
+  b->gen++;
+  ctx->objects_info.alive--;
+  ctx->objects_info.free.list[ctx->objects_info.free.size++] = fe_object_index(obj);
+}
+
+void fe_free_buffer(FeContext *_ctx, FeBuffer buf)
+{
+  NullContext *ctx = (void *)_ctx;
   if (fe_check_buffer(_ctx, buf) != FE_OK) {
-    __FEDL_LOG(ctx->logfd, "[ERROR] free invalid buffer id=%u\n", fe_buffer_index(buf))
+    __FEDL_LOG(ctx->logfd, "[ERROR] free invalid buffer id=%u\n", fe_object_index(buf))
     return;
   }
 
-  NullBuffer *b = &ctx->buffers[fe_buffer_index(buf)];
-
-  /* allocator */
-  if (ctx->buffers_free.size >= ctx->buffers_free.capacity) {
-    ctx->buffers_free.capacity = (ctx->buffers_free.capacity) ? ctx->buffers_free.capacity * 2 : 4;
-    ctx->buffers_free.list = realloc(ctx->buffers_free.list, ctx->buffers_free.capacity * sizeof(*ctx->buffers_free.list));
-  }
-
-  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u\n", fe_buffer_index(buf))
-  //free(b->data);
-  //b->data = 0;
-  b->size = 0;
-  b->alive = 0;
-  b->gen++;
-  ctx->buffers_alive--;
-  ctx->buffers_free.list[ctx->buffers_free.size++] = fe_buffer_index(buf);
+  fe_free_object(_ctx, buf);
+  NullObject *b = &ctx->objects[fe_object_index(buf)];
+  b->buffer.size = 0;
 
   FeCmd c = {
     .type = FE_CMD_DESTROY_BUFFER
@@ -234,3 +244,7 @@ void fe_free_buffer(FeContext *_ctx, FeBuffer buf)
   fe_execute(_ctx, &c);
 }
 
+/*FeShaderModule fe_create_shader_module(FeContext *_ctx, const FeShaderModuleDesc *desc)
+{
+  NullContext *ctx = (NullContext*)_ctx;
+}*/

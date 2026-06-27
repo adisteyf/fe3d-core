@@ -12,24 +12,25 @@
 #define FE_DEAD_BUFFER 0x04
 #define FE_OK 0x00
 
+
 typedef struct FeContext {
 	void *logfd;
 } FeContext;
 
 typedef uint64_t FeBuffer;
 
-static inline FeBuffer
-fe_buffer_make(uint32_t ind, uint32_t gen) {
+static inline uint64_t
+fe_object_make(uint32_t ind, uint32_t gen) {
   return ((uint64_t)gen<<32)|ind;
 }
 
 static inline uint32_t
-fe_buffer_index(FeBuffer h) {
+fe_object_index(uint64_t h) {
   return (uint32_t)(h&0xffffffff);
 }
 
 static inline uint32_t
-fe_buffer_generation(FeBuffer h) {
+fe_object_generation(uint64_t h) {
   return (uint32_t)(h>>32);
 }
 
@@ -72,6 +73,10 @@ typedef enum {
   FE_VERTEX_BUFFER,
   FE_STORAGE_BUFFER,
 } FeBufferUsage;
+
+typedef enum {
+  FE_TYPE_BUFFER
+} FeObjectType;
 
 typedef struct {
 	size_t size;
