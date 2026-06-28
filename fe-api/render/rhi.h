@@ -6,10 +6,7 @@
 #define FE_GET_RENDER_IMPL(r) ((FeRenderImpl *)(r))
 
 typedef struct {
-  uint32_t gen;
-  int alive;
-  FeObjectType type;
-
+  FeRenderObjectType type;
   union {
     struct {
       uint32_t size;
@@ -26,22 +23,15 @@ typedef struct {
       FeShaderCodeType type;
     } shader_module;
   };
-} NullObject;
+} FeRenderObject;
 
 typedef struct {
   /* FeContext */
   void *logfd;
 
   /* API */
-  struct {
-    ulong count,capacity,alive;
-    struct {
-      ulong *list,size,capacity;
-    } free;
-  } objects_info;
-
+  FeObjectsInfo *info;
   FeBackend backend;
-  NullObject *objects;
   FeCmdBuffer *cmds;
   ulong framebuffer_count;
   ulong frame;

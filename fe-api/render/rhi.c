@@ -117,13 +117,14 @@ FeRender fe_render_create(FeRenderDesc *desc)
 
   impl->logfd = desc->out_fd;
   impl->frame = 0;
-  impl->objects = 0;
-  impl->objects_info.count = 0;
-  impl->objects_info.capacity = 0;
-  impl->objects_info.free.list = 0;
-  impl->objects_info.free.size = 0;
-  impl->objects_info.free.capacity = 0;
-  impl->objects_info.alive = 0;
+  impl->info = malloc(sizeof(FeObjectsInfo));
+  impl->info->objects = 0;
+  impl->info->count = 0;
+  impl->info->capacity = 0;
+  impl->info->free.list = 0;
+  impl->info->free.size = 0;
+  impl->info->free.capacity = 0;
+  impl->info->alive = 0;
   impl->framebuffer_count = 0;
   impl->cmds = fe_cmd_begin(r);
   impl->cmds->render = r;
@@ -135,12 +136,12 @@ void fe_render_free(FeRender _ctx)
 {
   FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
 
-  if (ctx->objects_info.alive) {
-    __FEDL_LOG(ctx->logfd, "[LEAK] %zu buffers not destroyed\n", ctx->objects_info.count)
+  if (ctx->info->alive) {
+    __FEDL_LOG(ctx->logfd, "[LEAK] %zu buffers not destroyed\n", ctx->info->count)
   }
 
-  for (ulong i=0; i<ctx->objects_info.count; i++) {
-    if (ctx->objects[i].alive) {
+  for (ulong i=0; i<ctx->info->count; i++) {
+    if (ctx->info->objects[i].alive) {
       __FEDL_LOG(ctx->logfd, "[LEAK] buffer id=%zu is alive\n", i)
       //free(ctx->buffers[i].data);
       //fe_free_buffer(ctx, ) TODO
@@ -148,40 +149,13 @@ void fe_render_free(FeRender _ctx)
   }
 
   fe_free_backend(&ctx->backend);
-  free(ctx->objects);
-  free(ctx->objects_info.free.list);
+  free(ctx->info->objects);
+  free(ctx->info->free.list);
+  free(ctx->info);
   free(ctx->cmds->data);
   free(ctx->cmds);
   __FEDL_LOG(ctx->logfd, "[INFO] DebugBlank shutdown\n")
   free(ctx);
-}
-
-uint64_t fe_create_object(FeRender _ctx)
-{
-  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
-
-  /* allocator */
-  if (ctx->objects_info.count >= ctx->objects_info.capacity) {
-    ctx->objects_info.capacity = (ctx->objects_info.capacity) ? ctx->objects_info.capacity * 2 : 8;
-    ctx->objects = realloc(ctx->objects, ctx->objects_info.capacity * sizeof(*ctx->objects));
-  }
-
-  ulong id;
-  if (ctx->objects_info.free.size > 0) {
-    id = ctx->objects_info.free.list[--ctx->objects_info.free.size];
-  } else {
-    id = ctx->objects_info.count++;
-  }
-
-  NullObject *b = &ctx->objects[id];
-  b->gen++;
-  uint64_t handle = fe_object_make(id, b->gen);
-
-
-  b->alive = 1;
-  ctx->objects_info.alive++;
-
-  return handle;
 }
 
 FeBuffer fe_create_buffer(FeRender _ctx, const FeBufferDesc *desc)
@@ -192,12 +166,14 @@ FeBuffer fe_create_buffer(FeRender _ctx, const FeBufferDesc *desc)
     return FE_INVALID_BUFFER;
   }
 
-  FeBuffer h = fe_create_object(_ctx);
+  FeBuffer h = fe_create_object(ctx->info);
   uint32_t id = fe_object_index(h);
-  NullObject *b = &ctx->objects[id];
+  NullObject *b = &ctx->info->objects[id];
+  b->object = malloc(sizeof(FeRenderObject));
+  FeRenderObject *obj = b->object;
 
-  b->buffer.size = desc->size;
-  b->buffer.usage = desc->usage;
+  obj->buffer.size = desc->size;
+  obj->buffer.usage = desc->usage;
 
   __FEDL_LOG(ctx->logfd, "[INFO] create buffer cmd id=%u size=%zu\n", id, desc->size)
   FeCmd c = {
@@ -211,12 +187,11 @@ FeBuffer fe_create_buffer(FeRender _ctx, const FeBufferDesc *desc)
   return h;
 }
 
-
 int fe_check_buffer(FeRender _ctx, FeBuffer h)
 {
   FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
-  if (fe_object_index(h) >= ctx->objects_info.count) return 0;
-  NullObject *b = &ctx->objects[fe_object_index(h)];
+  if (fe_object_index(h) >= ctx->info->count) return 0;
+  NullObject *b = &ctx->info->objects[fe_object_index(h)];
 
   if (!b->alive) {
     __FEDL_LOG(ctx->logfd, "[ERROR] dead buffer id=%u\n", fe_object_index(h))
@@ -248,24 +223,6 @@ void fe_bind_vertex_buffer(FeCmdBuffer *cmd, FeBuffer buf)
   push_cmd(cmd, c);
 }
 
-void fe_free_object(FeRender _ctx, uint64_t obj)
-{
-  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
-  NullObject *b = &ctx->objects[fe_object_index(obj)];
-
-  /* allocator */
-  if (ctx->objects_info.free.size >= ctx->objects_info.free.capacity) {
-    ctx->objects_info.free.capacity = (ctx->objects_info.free.capacity) ? ctx->objects_info.free.capacity * 2 : 4;
-    ctx->objects_info.free.list = realloc(ctx->objects_info.free.list, ctx->objects_info.free.capacity * sizeof(*ctx->objects_info.free.list));
-  }
-
-  __FEDL_LOG(ctx->logfd, "[INFO] free buffer id=%u\n", fe_object_index(obj))
-  b->alive = 0;
-  b->gen++;
-  ctx->objects_info.alive--;
-  ctx->objects_info.free.list[ctx->objects_info.free.size++] = fe_object_index(obj);
-}
-
 void fe_free_buffer(FeRender _ctx, FeBuffer buf)
 {
   FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
@@ -274,9 +231,10 @@ void fe_free_buffer(FeRender _ctx, FeBuffer buf)
     return;
   }
 
-  fe_free_object(_ctx, buf);
-  NullObject *b = &ctx->objects[fe_object_index(buf)];
-  b->buffer.size = 0;
+  fe_free_object(ctx->info, buf);
+  NullObject *b = &ctx->info->objects[fe_object_index(buf)];
+  FeRenderObject *obj = b->object;
+  obj->buffer.size = 0;
 
   FeCmd c = {
     .type = FE_CMD_DESTROY_BUFFER
@@ -294,14 +252,15 @@ FeShaderModule fe_create_shader_module(FeRender _ctx, const FeShaderModuleDesc *
     return FE_INVALID_SHADER_MODULE;
   }
 
-  FeBuffer h = fe_create_object(_ctx);
+  FeBuffer h = fe_create_object(ctx->info);
   uint32_t id = fe_object_index(h);
-  NullObject *b = &ctx->objects[id];
+  NullObject *b = &ctx->info->objects[id];
+  FeRenderObject *obj = b->object;
 
-  b->shader_module.type = desc->type;
-  b->shader_module.code_size = desc->code_size;
-  b->shader_module.code = malloc(b->shader_module.code_size+1);
-  memcpy(b->shader_module.code, desc->code, desc->code_size);
+  obj->shader_module.type = desc->type;
+  obj->shader_module.code_size = desc->code_size;
+  obj->shader_module.code = malloc(obj->shader_module.code_size+1);
+  memcpy(obj->shader_module.code, desc->code, desc->code_size);
 
   __FEDL_LOG(ctx->logfd, "[INFO] create shader cmd id=%u code_size=%u\n", id, desc->code_size)
   FeCmd c = {
@@ -323,9 +282,10 @@ void fe_free_shader_module(FeRender _ctx, FeShaderModule h)
     return;
   }
 
-  fe_free_object(_ctx, h);
-  NullObject *b = &ctx->objects[fe_object_index(h)];
-  b->buffer.size = 0;
+  fe_free_object(ctx->info, h);
+  NullObject *b = &ctx->info->objects[fe_object_index(h)];
+  FeRenderObject *obj = b->object;
+  obj->buffer.size = 0;
 
   FeCmd c = {
     .type = FE_CMD_DESTROY_SHADER_MODULE

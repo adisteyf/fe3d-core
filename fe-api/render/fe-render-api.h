@@ -19,23 +19,6 @@
 } FeContext;*/
 
 typedef uint64_t FeBuffer;
-
-static inline uint64_t
-fe_object_make(uint32_t ind, uint32_t gen) {
-  return ((uint64_t)gen<<32)|ind;
-}
-
-static inline uint32_t
-fe_object_index(uint64_t h) {
-  return (uint32_t)(h&0xffffffff);
-}
-
-static inline uint32_t
-fe_object_generation(uint64_t h) {
-  return (uint32_t)(h>>32);
-}
-
-
 typedef uint32_t FePipeline;
 
 #define FER_API_MAJOR 0
@@ -80,7 +63,7 @@ typedef enum {
 
 typedef enum {
   FE_TYPE_BUFFER
-} FeObjectType;
+} FeRenderObjectType;
 
 typedef struct {
 	size_t size;

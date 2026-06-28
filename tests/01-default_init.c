@@ -4,11 +4,6 @@
 #include <stdio.h>
 
 int main() {
-  /*FeBackends febs = {0};
-  if (fe_render_api("./libfer-backend_debugblank", &febs, stdout)) {
-    printf("failed to load fe_render backend\n");
-    return -1;
-  }*/
   FeRenderDesc render_desc = {
     .path = "./libfer-backend_debugblank",
     .out_fd = stdout
@@ -19,17 +14,7 @@ int main() {
 
   printf("%s\n%s\nv%d.%d.%d\n",
       ferapi.api_name, ferapi.desc, ferapi.version.major, ferapi.version.minor, ferapi.version.patch);
-  
-  /*
-  FeRInitDesc fer_init_desc = {
-    .out_fd = stdout,
-    .feb = febs.render,
-  };
-  FeContext *ctx = fe_render_init(&fer_init_desc);
-  */
-
 
   fe_render_free(render);
-  //fe_free_backends(&febs);
   return 0;
 }

@@ -18,11 +18,12 @@ fe_cmd_create_buffer(FeRenderImpl *nctx, FeCmd *c)
   FeBuffer h = c->create_buffer.h;
   uint32_t ind = fe_object_index(h);
 
-  NullObject *b = &nctx->objects[ind];
+  NullObject *b = &nctx->info->objects[ind];
+  FeRenderObject *obj = b->object;
   const FeBufferDesc *desc = &c->create_buffer.desc;
-  b->buffer.native.data = malloc(desc->size);
+  obj->buffer.native.data = malloc(desc->size);
 
-  memcpy(b->buffer.native.data, desc->data, desc->size);
+  memcpy(obj->buffer.native.data, desc->data, desc->size);
 
   __FEDL_LOG(nctx->logfd, "create buffer handle=%zu size=%zu usage=%u\n", c->create_buffer.h, c->create_buffer.desc.size,
       c->create_buffer.desc.usage)
@@ -34,8 +35,9 @@ fe_cmd_destroy_buffer(FeRenderImpl *nctx, FeCmd *c)
   FeBuffer h = c->create_buffer.h;
   uint32_t ind = fe_object_index(h);
 
-  NullObject *b = &nctx->objects[ind];
-  free(b->buffer.native.data);
+  NullObject *b = &nctx->info->objects[ind];
+  FeRenderObject *obj = b->object;
+  free(obj->buffer.native.data);
 
   __FEDL_LOG(nctx->logfd, "destroy buffer handle=%zu\n", c->destroy_buffer.h)
 }

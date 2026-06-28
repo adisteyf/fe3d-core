@@ -34,7 +34,12 @@ endif ()
 
 add_library(dl-loader STATIC dl-loader/dl-loader.c)
 add_library(fer-backend_debugblank SHARED backends/fer-backend_debugblank.c)
-add_library(fe3d-core SHARED fe-api/render/rhi.c)
+
+add_library(fe3d-core SHARED
+  fe-api/render/rhi.c
+  fe-api/engine.c
+)
+
 target_include_directories(dl-loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/dl-loader")
 target_link_libraries(fe3d-core dl-loader)
 
