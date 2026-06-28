@@ -7,15 +7,13 @@ FeRenderAPI fe_renderapi_version_debugblank(void)
   FeRenderAPI ferapi = { 0 };
   strcpy(ferapi.api_name, "DebugBlank");
   strcpy(ferapi.desc, "DebugBlank v0.0.0 test description");
-  ferapi.major = 0;
-  ferapi.minor = 1;
-  ferapi.patch = 0;
+  ferapi.version = FE_MAKE_VERSION(0, 1, 0);
 
   return ferapi;
 }
 
 static inline void
-fe_cmd_create_buffer(NullContext *nctx, FeCmd *c)
+fe_cmd_create_buffer(FeRenderImpl *nctx, FeCmd *c)
 {
   FeBuffer h = c->create_buffer.h;
   uint32_t ind = fe_object_index(h);
@@ -31,7 +29,7 @@ fe_cmd_create_buffer(NullContext *nctx, FeCmd *c)
 }
 
 static inline void
-fe_cmd_destroy_buffer(NullContext *nctx, FeCmd *c)
+fe_cmd_destroy_buffer(FeRenderImpl *nctx, FeCmd *c)
 {
   FeBuffer h = c->create_buffer.h;
   uint32_t ind = fe_object_index(h);
@@ -42,9 +40,9 @@ fe_cmd_destroy_buffer(NullContext *nctx, FeCmd *c)
   __FEDL_LOG(nctx->logfd, "destroy buffer handle=%zu\n", c->destroy_buffer.h)
 }
 
-void fe_execute_debugblank(FeContext *ctx, FeCmd *c)
+void fe_execute_debugblank(FeRender ctx, FeCmd *c)
 {
-  NullContext *nctx = (void *)ctx;
+  FeRenderImpl *nctx = FE_GET_RENDER_IMPL(ctx);
 
   switch (c->type) {
 case FE_CMD_CREATE_BUFFER:
@@ -55,7 +53,7 @@ case FE_CMD_CREATE_BUFFER:
 
 case FE_CMD_BIND_VERTEX_BUFFER:
 {
-  __FEDL_LOG(ctx->logfd, "bind buffer handle=%zu\n", c->bind_vertex_buffer.h)
+  __FEDL_LOG(nctx->logfd, "bind buffer handle=%zu\n", c->bind_vertex_buffer.h)
   break;
 }
 
@@ -67,7 +65,7 @@ case FE_CMD_DESTROY_BUFFER:
   }
 }
 
-void fe_submit_debugblank(FeContext *ctx, FeCmdBuffer *cmd)
+void fe_submit_debugblank(FeRender ctx, FeCmdBuffer *cmd)
 {
   for (uint32_t i=0; i<cmd->count; ++i) {
     FeCmd *c = &cmd->data[i];

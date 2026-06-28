@@ -3,24 +3,32 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "fe-render-api.h"
+#define FE_GET_RENDER_IMPL(r) ((FeRenderImpl *)(r))
 
 typedef struct {
   uint32_t gen;
   int alive;
   FeObjectType type;
 
-  // TODO: union
-  struct {
-    uint32_t size;
-    FeBufferUsage usage;
+  union {
+    struct {
+      uint32_t size;
+      FeBufferUsage usage;
+
+      struct {
+        void *data;
+      } native;
+    } buffer;
 
     struct {
-      void *data;
-    } native;
-  } buffer;
+      void *code;
+      uint32_t code_size;
+      FeShaderCodeType type;
+    } shader_module;
+  };
 } NullObject;
 
-typedef struct NullContext {
+typedef struct {
   /* FeContext */
   void *logfd;
 
@@ -32,10 +40,11 @@ typedef struct NullContext {
     } free;
   } objects_info;
 
+  FeBackend backend;
   NullObject *objects;
   FeCmdBuffer *cmds;
   ulong framebuffer_count;
   ulong frame;
-} NullContext;
+} FeRenderImpl;
 
 #endif // __FE_RENDER_RHI

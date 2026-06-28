@@ -4,17 +4,24 @@
 
 int main()
 {
-  FeBackends febs = {0};
-  if (fe_render_api("./libfer-backend_debugblank", &febs, stdout)) {
+  //FeBackends febs = {0};
+  FeRenderDesc render_desc = {
+    .out_fd = stdout,
+    .path = "./libfer-backend_debugblank",
+  };
+
+  FeRender render = fe_render_create(&render_desc);
+
+  /*if () {
     printf("failed to load fe_render backend\n");
     return -1;
-  }
+  }*/
 
-	FeRInitDesc init_desc = {
+	/*FeRInitDesc init_desc = {
 		.feb = febs.render,
-  	.out_fd = stdout, /* stdout for logs */
+  	.out_fd = stdout, / * stdout for logs * /
   };
-	FeContext *ctx = fe_render_init(&init_desc);
+	FeContext *ctx = fe_render_init(&init_desc);*/
 
 	float vertices[] = {
 		0.0f, 0.5f,
@@ -27,13 +34,13 @@ int main()
 		.data  = vertices,
 		.usage = FE_VERTEX_BUFFER,
 	};
-	FeBuffer vbuf = fe_create_buffer(ctx, &buf_desc);
+	FeBuffer vbuf = fe_create_buffer(render, &buf_desc);
 
   FeShaderModuleDesc shader_desc = {
     .code = "<spirv_binary_data>",
     .type = FE_SHADER_CODE_TYPE_SPIRV
   };
-  FeShaderModule shader = fe_create_shader_module(ctx, &shader_desc);
+  FeShaderModule shader = fe_create_shader_module(render, &shader_desc);
 
 	FePipelineDesc pipeline_desc = {
 		.vs = {
@@ -45,10 +52,10 @@ int main()
       .entry = "fragMain"
     }
 	};
-	FePipeline pipeline = fe_create_pipeline(ctx, &pipeline_desc);
+	FePipeline pipeline = fe_create_pipeline(render, &pipeline_desc);
 
-	while (!fe_window_isclosed(ctx)) {
-		FeCmdBuffer *cmd = fe_cmd_begin(ctx);
+	while (!fe_window_isclosed(render)) {
+		FeCmdBuffer *cmd = fe_cmd_begin(render);
 		FePassDesc pass = {
 			.clear_color = {0.1f, 0.1f, 0.2f, 1.0f},
 		};
@@ -60,11 +67,11 @@ int main()
 		}
 
 		fe_cmd_end(cmd);
-		fe_submit(ctx, cmd);
+		fe_submit(render, cmd);
 	}
 
-	fe_render_shutdown(ctx);
-  fe_free_backends(&febs);
+	fe_render_free(render);
+  //fe_free_backends(&febs);
 	return 0;
 }
 

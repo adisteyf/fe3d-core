@@ -1,9 +1,10 @@
 #include "fe-render-api.h"
+#include <stdlib.h>
 #include <string.h>
 #include "../../dl-loader/dl-loader.h"
 #include "rhi.h"
 
-int fe_render_api(char *path, FeBackends *febs, void *outfd)
+/*int fe_render_api(char *path, FeBackends *febs, void *outfd)
 {
 	int status=0;
 	char *postfix = strchr(path, '_');
@@ -17,24 +18,24 @@ int fe_render_api(char *path, FeBackends *febs, void *outfd)
 		// FEDL_SYM(fe_render_shutdown)
 		// FEDL_SYM(fe_create_buffer)
 		// FEDL_SYM(fe_free_buffer)
-		/*FEDL_SYM(fe_create_shader)
+		/ *FEDL_SYM(fe_create_shader)
 		FEDL_SYM(fe_create_pipeline)
 		FEDL_SYM(fe_bind_pipeline)*/
 		// FEDL_SYM(fe_bind_vertex_buffer)
 		/*FEDL_SYM(fe_draw)
 		FEDL_SYM(fe_cmd_begin)
 		FEDL_SYM(fe_cmd_end)
-    */
+    * /
 		FEDL_SYM(fe_submit)
 		FEDL_SYM(fe_execute)
-    /*
+    / *
 		FEDL_SYM(fe_free_backend)
-		FEDL_SYM(fe_free_backends)*/
+		FEDL_SYM(fe_free_backends)* /
 	};
 
 	status = fedl_loadsyms(&febs->render, syms, sizeof(syms)/sizeof(syms[0]), postfix, outfd);
 	return status;
-}
+}*/
 
 
 static void
@@ -49,30 +50,31 @@ push_cmd(FeCmdBuffer *cmd, FeCmd c)
 }
 
 FeCmdBuffer *
-fe_cmd_begin(FeContext *ctx)
+fe_cmd_begin(FeRender ctx)
 {
   FeCmdBuffer *cmd = calloc(1, sizeof(*cmd));
-  cmd->ctx = ctx;
+  cmd->render = ctx;
   return cmd;
 }
 
 void
-fe_cmd_reset(FeContext *_ctx)
+fe_cmd_reset(FeRender _ctx)
 {
-  NullContext *ctx = (void *)_ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
   bzero(ctx->cmds->data, ctx->cmds->count*sizeof(FeCmd));
   ctx->cmds->count = 0;
 }
 
 void
-fe_cmd_submit(FeContext *_ctx)
+fe_cmd_submit(FeRender _ctx)
 {
-  NullContext *ctx = (void *)_ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
   fe_submit(_ctx, ctx->cmds);
 }
 
 
-FeContext *fe_render_init(const FeRInitDesc *desc) {
+/*
+FeRender fe_render_init(const FeRInitDesc *desc) {
   NullContext *ctx = malloc(sizeof(NullContext));
   ctx->logfd = desc->out_fd;
   ctx->frame = 0;
@@ -88,11 +90,50 @@ FeContext *fe_render_init(const FeRInitDesc *desc) {
   ctx->cmds->ctx = (void*)ctx;
   __FEDL_LOG(ctx->logfd, "[INFO] DebugBlank initialised\n")
   return (FeContext*)ctx;
+}*/
+
+FeRender fe_render_create(FeRenderDesc *desc)
+{
+  FeRenderImpl *impl = malloc(sizeof(FeRenderImpl));
+  FeRender r = (FeRender)impl;
+
+	int status=0;
+	char *postfix = strchr(desc->path, '_');
+	impl->backend = fe_load_backend(desc->path, &status, desc->out_fd);
+	if (status) return status;
+	__FEDL_LOG(desc->out_fd, "[INFO] loading fe_render_api symbols\n")
+
+	fedl_sym syms[] = {
+		FEDL_SYM(fe_renderapi_version)
+		FEDL_SYM(fe_submit)
+		FEDL_SYM(fe_execute)
+	};
+
+	status = fedl_loadsyms(&impl->backend, syms, sizeof(syms)/sizeof(syms[0]), postfix, desc->out_fd);
+  if (status) {
+    __FEDL_LOG(desc->out_fd, "[FATAL] failed to load fe_render backend")
+    return 0;
+  }
+
+  impl->logfd = desc->out_fd;
+  impl->frame = 0;
+  impl->objects = 0;
+  impl->objects_info.count = 0;
+  impl->objects_info.capacity = 0;
+  impl->objects_info.free.list = 0;
+  impl->objects_info.free.size = 0;
+  impl->objects_info.free.capacity = 0;
+  impl->objects_info.alive = 0;
+  impl->framebuffer_count = 0;
+  impl->cmds = fe_cmd_begin(r);
+  impl->cmds->render = r;
+  __FEDL_LOG(impl->logfd, "[INFO] DebugBlank initialised\n")
+  return r;
 }
 
-void fe_render_shutdown(FeContext *_ctx)
+void fe_render_free(FeRender _ctx)
 {
-  NullContext *ctx = (NullContext*)_ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
 
   if (ctx->objects_info.alive) {
     __FEDL_LOG(ctx->logfd, "[LEAK] %zu buffers not destroyed\n", ctx->objects_info.count)
@@ -106,6 +147,7 @@ void fe_render_shutdown(FeContext *_ctx)
     }
   }
 
+  fe_free_backend(&ctx->backend);
   free(ctx->objects);
   free(ctx->objects_info.free.list);
   free(ctx->cmds->data);
@@ -114,9 +156,9 @@ void fe_render_shutdown(FeContext *_ctx)
   free(ctx);
 }
 
-uint64_t fe_create_object(FeContext *_ctx)
+uint64_t fe_create_object(FeRender _ctx)
 {
-  NullContext *ctx = (NullContext*)_ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
 
   /* allocator */
   if (ctx->objects_info.count >= ctx->objects_info.capacity) {
@@ -142,9 +184,9 @@ uint64_t fe_create_object(FeContext *_ctx)
   return handle;
 }
 
-FeBuffer fe_create_buffer(FeContext *_ctx, const FeBufferDesc *desc)
+FeBuffer fe_create_buffer(FeRender _ctx, const FeBufferDesc *desc)
 {
-  NullContext *ctx = (void *)_ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
   if (!desc || desc->size==0) {
     __FEDL_LOG(ctx->logfd, "[ERROR] invalid buffer desc\n")
     return FE_INVALID_BUFFER;
@@ -170,9 +212,9 @@ FeBuffer fe_create_buffer(FeContext *_ctx, const FeBufferDesc *desc)
 }
 
 
-int fe_check_buffer(FeContext *_ctx, FeBuffer h)
+int fe_check_buffer(FeRender _ctx, FeBuffer h)
 {
-  NullContext *ctx = (void *)_ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
   if (fe_object_index(h) >= ctx->objects_info.count) return 0;
   NullObject *b = &ctx->objects[fe_object_index(h)];
 
@@ -191,9 +233,9 @@ int fe_check_buffer(FeContext *_ctx, FeBuffer h)
 
 void fe_bind_vertex_buffer(FeCmdBuffer *cmd, FeBuffer buf)
 {
-  NullContext *ctx = (void*)cmd->ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(cmd->render);
 
-  if (fe_check_buffer((void*)ctx, buf) != FE_OK) {
+  if (fe_check_buffer(cmd->render, buf) != FE_OK) {
     __FEDL_LOG(ctx->logfd, "[ERROR] invalid buffer id=%u\n", fe_object_index(buf))
     return;
   }
@@ -206,9 +248,9 @@ void fe_bind_vertex_buffer(FeCmdBuffer *cmd, FeBuffer buf)
   push_cmd(cmd, c);
 }
 
-void fe_free_object(FeContext *_ctx, uint64_t obj)
+void fe_free_object(FeRender _ctx, uint64_t obj)
 {
-  NullContext *ctx = (NullContext*)_ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
   NullObject *b = &ctx->objects[fe_object_index(obj)];
 
   /* allocator */
@@ -224,9 +266,9 @@ void fe_free_object(FeContext *_ctx, uint64_t obj)
   ctx->objects_info.free.list[ctx->objects_info.free.size++] = fe_object_index(obj);
 }
 
-void fe_free_buffer(FeContext *_ctx, FeBuffer buf)
+void fe_free_buffer(FeRender _ctx, FeBuffer buf)
 {
-  NullContext *ctx = (void *)_ctx;
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
   if (fe_check_buffer(_ctx, buf) != FE_OK) {
     __FEDL_LOG(ctx->logfd, "[ERROR] free invalid buffer id=%u\n", fe_object_index(buf))
     return;
@@ -244,7 +286,51 @@ void fe_free_buffer(FeContext *_ctx, FeBuffer buf)
   fe_execute(_ctx, &c);
 }
 
-/*FeShaderModule fe_create_shader_module(FeContext *_ctx, const FeShaderModuleDesc *desc)
+FeShaderModule fe_create_shader_module(FeRender _ctx, const FeShaderModuleDesc *desc)
 {
-  NullContext *ctx = (NullContext*)_ctx;
-}*/
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
+  if (!desc || desc->code==0) {
+    __FEDL_LOG(ctx->logfd, "[ERROR] invalid shader module desc\n")
+    return FE_INVALID_SHADER_MODULE;
+  }
+
+  FeBuffer h = fe_create_object(_ctx);
+  uint32_t id = fe_object_index(h);
+  NullObject *b = &ctx->objects[id];
+
+  b->shader_module.type = desc->type;
+  b->shader_module.code_size = desc->code_size;
+  b->shader_module.code = malloc(b->shader_module.code_size+1);
+  memcpy(b->shader_module.code, desc->code, desc->code_size);
+
+  __FEDL_LOG(ctx->logfd, "[INFO] create shader cmd id=%u code_size=%u\n", id, desc->code_size)
+  FeCmd c = {
+    .type = FE_CMD_CREATE_SHADER_MODULE,
+  };
+
+  c.create_shader_module.h = h;
+  c.create_shader_module.desc = *desc;
+  fe_execute(_ctx, &c);
+
+  return h;
+}
+
+void fe_free_shader_module(FeRender _ctx, FeShaderModule h)
+{
+  FeRenderImpl *ctx = FE_GET_RENDER_IMPL(_ctx);
+  if (fe_check_buffer(_ctx, h) != FE_OK) {
+    __FEDL_LOG(ctx->logfd, "[ERROR] free invalid buffer id=%u\n", fe_object_index(h))
+    return;
+  }
+
+  fe_free_object(_ctx, h);
+  NullObject *b = &ctx->objects[fe_object_index(h)];
+  b->buffer.size = 0;
+
+  FeCmd c = {
+    .type = FE_CMD_DESTROY_SHADER_MODULE
+  };
+
+  c.destroy_shader_module.h = h;
+  fe_execute(_ctx, &c);
+}
